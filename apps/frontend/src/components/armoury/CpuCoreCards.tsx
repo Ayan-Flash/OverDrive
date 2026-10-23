@@ -8,7 +8,7 @@
 interface CoreData {
   coreIndex: number;
   frequency: number; // MHz
-  temperature: number | null; // °C
+  usage: number; // percent, per logical processor
 }
 
 interface CpuCoreCardsProps {
@@ -44,15 +44,9 @@ export function CpuCoreCards({ cores }: CpuCoreCardsProps) {
                 {core.frequency}
                 <span className="ac-core-card__unit">MHz</span>
               </div>
-              {core.temperature != null ? (
-                <div className="ac-core-card__label" style={{ marginTop: 2, color: isRed ? '#ff5555' : '#3399ff', fontWeight: 600 }}>
-                  {Math.round(core.temperature)}°C
-                </div>
-              ) : (
-                <div className="ac-core-card__label" style={{ marginTop: 2, color: 'var(--ac-text-muted)', fontSize: '8px' }}>
-                  N/A (No Admin)
-                </div>
-              )}
+              <div className="ac-core-card__label" style={{ marginTop: 2, color: isRed ? '#ff5555' : '#3399ff', fontWeight: 600 }}>
+                {Math.round(core.usage)}% usage
+              </div>
             </div>
           </div>
         );

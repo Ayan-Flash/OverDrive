@@ -19,8 +19,6 @@ describe('Armoury dashboard metrics', () => {
         voltage={null}
         temperature={null}
         usage={null}
-        vramUsed={null}
-        vramTotal={null}
         memoryClock={null}
       />,
     );

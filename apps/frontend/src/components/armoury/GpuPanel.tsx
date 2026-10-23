@@ -13,9 +13,8 @@ interface GpuPanelProps {
   voltage: number | null; // Volts — null when the GPU/driver does not expose it
   temperature: number | null;  // Celsius
   usage: number | null;        // percent
-  vramUsed: number | null;     // GB
-  vramTotal: number | null;    // GB
   memoryClock?: number | null; // MHz
+  maxTgp?: number | null; // W
   maxFrequency?: number;
 }
 
@@ -35,9 +34,8 @@ export function GpuPanel({
   voltage,
   temperature,
   usage,
-  vramUsed,
-  vramTotal,
   memoryClock,
+  maxTgp,
   maxFrequency = 2500,
 }: GpuPanelProps) {
   const freqPercent = frequency != null ? Math.min((frequency / maxFrequency) * 100, 100) : 0;
@@ -77,30 +75,6 @@ export function GpuPanel({
         })}
       </div>
 
-      {/* GPU Voltage */}
-      <div className="ac-info-row">
-        <span className="ac-info-row__label">GPU Voltage</span>
-        <span className="ac-info-row__value">
-          {voltage != null && voltage > 0 ? (
-            <SpringValue value={voltage} unit="V" decimals={3} />
-          ) : (
-            'N/A'
-          )}
-        </span>
-      </div>
-
-      {/* Temperature */}
-      <div className="ac-info-row">
-        <span className="ac-info-row__label">Temperature</span>
-        <span className="ac-info-row__value">
-          {temperature != null && temperature > 0 ? (
-            <SpringValue value={temperature} unit="°C" />
-          ) : (
-            'N/A'
-          )}
-        </span>
-      </div>
-
       {/* Usage */}
       <div className="ac-info-row">
         <span className="ac-info-row__label">Usage</span>
@@ -113,33 +87,30 @@ export function GpuPanel({
         </span>
       </div>
 
-      {/* VRAM */}
+      {/* Memory clock */}
       <div className="ac-info-row">
-        <span className="ac-info-row__label">VRAM</span>
+        <span className="ac-info-row__label">Memory Frequency</span>
         <span className="ac-info-row__value">
-          {vramUsed != null && vramTotal != null && vramTotal > 0 ? (
-            <>
-              <SpringValue value={vramUsed} unit="" decimals={1} />/{vramTotal}GB
-            </>
+          {memoryClock != null && memoryClock > 0 ? (
+            <SpringValue value={memoryClock} unit="MHz" />
           ) : (
             'N/A'
           )}
         </span>
       </div>
 
-      {/* Memory Clock (if available) */}
-      {memoryClock !== undefined && (
-        <div className="ac-info-row">
-          <span className="ac-info-row__label">GPU Memory Clock</span>
-          <span className="ac-info-row__value">
-            {memoryClock != null && memoryClock > 0 ? (
-              <SpringValue value={memoryClock} unit="MHz" />
-            ) : (
-              'N/A'
-            )}
-          </span>
-        </div>
-      )}
+      <div className="ac-info-row">
+        <span className="ac-info-row__label">Temperature</span>
+        <span className="ac-info-row__value">{temperature != null && temperature > 0 ? <SpringValue value={temperature} unit="°C" /> : 'N/A'}</span>
+      </div>
+      <div className="ac-info-row">
+        <span className="ac-info-row__label">Voltage</span>
+        <span className="ac-info-row__value">{voltage != null && voltage > 0 ? <SpringValue value={voltage} unit="mV" /> : 'N/A'}</span>
+      </div>
+      <div className="ac-info-row">
+        <span className="ac-info-row__label">Max TGP</span>
+        <span className="ac-info-row__value">{maxTgp != null && maxTgp > 0 ? <SpringValue value={maxTgp} unit="W" /> : 'N/A'}</span>
+      </div>
     </PanelFrame>
   );
 }

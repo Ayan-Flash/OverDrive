@@ -4,8 +4,8 @@
   "version": "0.2.0",
   "identifier": "pro.gpucontrol.app",
   "build": {
-    "beforeBuildCommand": "",
-    "beforeDevCommand": "cd ..\\frontend && pnpm run dev",
+    "beforeBuildCommand": "pnpm --filter gpucontrol-pro-frontend build",
+    "beforeDevCommand": "pnpm --filter gpucontrol-pro-frontend dev",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../frontend/dist"
   },

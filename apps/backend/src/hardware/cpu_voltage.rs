@@ -1,14 +1,12 @@
 //! CPU voltage reading via WMI on Windows.
 //!
 //! Voltage is not exposed by the OS through simple system calls like
-//! frequency. This module uses multiple strategies:
+//! frequency. This module reads the Vcore sensor exposed by LibreHardwareMonitor.
 //!
-//! 1. **LibreHardwareMonitor WMI** — if LHM is running, its WMI namespace
+//! **LibreHardwareMonitor WMI** — if LHM is running, its WMI namespace
 //!    (`root\LibreHardwareMonitor`) exposes per-core Vcore sensors.
-//! 2. **Win32_Processor.CurrentVoltage** — a legacy WMI property that
-//!    reports a bit-encoded voltage value on some systems.
 //!
-//! Because each strategy spawns a subprocess (PowerShell), results are
+//! Because the query spawns a subprocess (PowerShell), results are
 //! cached for `CACHE_TTL_SECS` to avoid saturating the CPU with WMI queries.
 
 use std::time::Instant;
@@ -75,21 +73,12 @@ impl VoltageReader {
     }
 }
 
-/// Attempt to read CPU voltage via multiple WMI strategies.
+/// Read CPU voltage from the LHM Vcore sensor when available.
 fn query_voltage() -> CpuVoltage {
-    // 1. Try LibreHardwareMonitor WMI (most accurate on modern systems)
     if let Some(v) = lhm_vcore() {
         return CpuVoltage {
             vcore: Some(v),
             source: "LibreHardwareMonitor",
-        };
-    }
-
-    // 2. Fallback: legacy Win32_Processor.CurrentVoltage
-    if let Some(v) = win32_voltage() {
-        return CpuVoltage {
-            vcore: Some(v),
-            source: "Win32_Processor (WMI)",
         };
     }
 
@@ -108,55 +97,17 @@ fn lhm_vcore() -> Option<f64> {
     let script = r#"
 try {
     $sensors = Get-CimInstance -Namespace "root/LibreHardwareMonitor" -ClassName Sensor -ErrorAction Stop
-    $vcore = $sensors | Where-Object { $_.SensorType -eq 'Voltage' -and $_.Name -like '*Vcore*' } | Select-Object -First 1
+    $vcore = $sensors | Where-Object {
+        $_.SensorType -eq 'Voltage' -and
+        $_.Identifier -match '^/(intelcpu|amdcpu)/' -and
+        $_.Name -match 'Vcore|CPU Core'
+    } | Select-Object -First 1
     if ($vcore -and $vcore.Value -ne $null) { [double]$vcore.Value }
 } catch {}
 "#;
-    run_powershell(script).and_then(|s| s.trim().parse::<f64>().ok())
-}
-
-/// Query Win32_Processor.CurrentVoltage (legacy).
-///
-/// The value is a bitfield (uint16):
-/// - Bits 0–5: Voltage ID (VID) when bit 6 is set.
-/// - Bit 6:    Voltage format (1 = VID-encoded, 0 = raw).
-/// - Bit 7:    Reserved.
-/// - Bits 8–9: Voltage level indication.
-///
-/// VID-to-voltage conversion follows Intel/AMD VID tables. We use a
-/// simplified heuristic: when bit 6 is set, decode the 6-bit VID;
-/// otherwise treat the lower nibble as millivolts × 10.
-fn win32_voltage() -> Option<f64> {
-    let script = r#"
-try {
-    $cpu = Get-CimInstance -ClassName Win32_Processor -ErrorAction Stop | Select-Object -First 1
-    if ($cpu.CurrentVoltage -ne $null -and $cpu.CurrentVoltage -gt 0) {
-        [int]$cpu.CurrentVoltage
-    }
-} catch {}
-"#;
-    let raw = run_powershell(script).and_then(|s| s.trim().parse::<u16>().ok())?;
-    if raw == 0 {
-        return None;
-    }
-
-    // Decode the bitfield
-    let vid_based = (raw & (1 << 6)) != 0;
-    if vid_based {
-        // Bits 0–5 hold a Voltage ID (VID).
-        // Common VID-to-voltage mapping for modern CPUs (approximate):
-        // voltage = 0.5 + VID * 0.0125  (Intel Skylake+ approximation)
-        let vid = raw & 0x3F;
-        Some(0.5 + (vid as f64) * 0.0125)
-    } else {
-        // Raw voltage: bits 0–5 in decivolts × 10 (deprecated).
-        let decivolts_x10 = raw & 0x3F;
-        if decivolts_x10 > 0 {
-            Some((decivolts_x10 as f64) * 0.01)
-        } else {
-            None
-        }
-    }
+    run_powershell(script)
+        .and_then(|s| s.trim().parse::<f64>().ok())
+        .filter(|voltage| voltage.is_finite() && *voltage > 0.0)
 }
 
 /// Run a PowerShell script and return its stdout if successful.

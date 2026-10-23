@@ -58,8 +58,10 @@ impl Database {
                     fan_speed_percent: row.get(7)?,
                     fan_rpm: row.get(8)?,
                     power_watts: row.get(9)?,
+                    max_power_limit_watts: None,
                     core_voltage_mv: row.get(10)?,
                     core_utilization_percent: row.get(11)?,
+                    core_utilization_available: true,
                     memory_utilization_percent: row.get(12)?,
                 })
             })?

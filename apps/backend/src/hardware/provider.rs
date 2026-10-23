@@ -40,10 +40,18 @@ pub struct GpuSample {
     pub fan_speed_percent: f64,
     pub fan_rpm: u32,
     pub power_watts: f64,
+    /// Maximum graphics power limit exposed by the driver, when available.
+    #[serde(default)]
+    pub max_power_limit_watts: Option<f64>,
     pub core_voltage_mv: f64,
     pub core_utilization_percent: f64,
+    /// False when the provider cannot read utilization; a zero reading is otherwise valid.
+    #[serde(default = "default_true")]
+    pub core_utilization_available: bool,
     pub memory_utilization_percent: f64,
 }
+
+fn default_true() -> bool { true }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuControlState {

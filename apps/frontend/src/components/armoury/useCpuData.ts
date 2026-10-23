@@ -10,7 +10,6 @@ export interface CpuCoreData {
   coreIndex: number;
   frequency: number; // MHz
   usage: number; // %
-  temperature: number | null;
 }
 
 export interface CpuData {
@@ -71,7 +70,6 @@ export function useCpuData(): CpuData {
           coreIndex: c.core_index,
           frequency: c.frequency_mhz,
           usage: c.usage_percent,
-          temperature: c.temperature_celsius,
         })),
         isElevated: info?.is_elevated ?? false,
       });

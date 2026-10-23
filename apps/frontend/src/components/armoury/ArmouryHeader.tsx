@@ -1,63 +1,60 @@
 import { useEffect, useState } from 'react';
-import { useGpuStore } from '../../stores';
+import { useGpuStore, useUiStore } from '../../stores';
 import { cpuService, type CpuInfo } from '../../services/cpuService';
-import { appService } from '../../services/gpuService';
 
-interface SpecGroup {
-  lines: string[];
-}
+type PageId = Parameters<ReturnType<typeof useUiStore.getState>['navigateTo']>[0];
+
+const pageTitles: Record<PageId, string> = {
+  dashboard: 'Overview',
+  control: 'Control',
+  profiles: 'Profiles',
+  alerts: 'Alerts',
+  remote: 'Remote Monitoring',
+  overlay: 'Gaming Overlay',
+  automation: 'Automation',
+  integrations: 'Integrations',
+  reports: 'Performance Lab',
+  enterprise: 'Enterprise',
+  sync: 'Cloud Sync',
+  ai: 'AI Insights',
+  backup: 'Backup & Restore',
+  marketplace: 'Profile Marketplace',
+  monitoring: 'Monitor',
+  settings: 'Settings',
+};
 
 export function ArmouryHeader() {
-  const gpus = useGpuStore((s) => s.gpus);
-  const gpuName = gpus[0]?.name ?? 'GPU';
+  const currentPage = useUiStore((state) => state.currentPage);
+  const selectedGpuId = useUiStore((state) => state.selectedGpuId);
+  const gpus = useGpuStore((state) => state.gpus);
   const [cpuInfo, setCpuInfo] = useState<CpuInfo | null>(null);
-  const [appInfo, setAppInfo] = useState<{ name: string; version: string; platform: string } | null>(null);
 
   useEffect(() => {
-    cpuService.getInfo().then(setCpuInfo).catch(() => {});
-    appService.getInfo().then(setAppInfo).catch(() => {});
+    let mounted = true;
+    cpuService.getInfo().then((info) => {
+      if (mounted) setCpuInfo(info);
+    }).catch(() => {
+      if (mounted) setCpuInfo(null);
+    });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  const specGroups: SpecGroup[] = [
-    { lines: [gpuName, cpuInfo ? `${cpuInfo.model}` : 'CPU'] },
-    { lines: appInfo ? [`v${appInfo.version}`, appInfo.platform] : ['Loading...'] },
-  ];
+  const selectedGpu = gpus.find((gpu) => gpu.id === selectedGpuId);
+  const title = pageTitles[currentPage];
 
   return (
     <header className="ac-header">
-      <span className="ac-header__title">Dashboard</span>
-
-      <div className="ac-header__specs">
-        {specGroups.map((group, gi) => (
-          <div key={gi} className="ac-header__spec-group">
-            {group.lines.map((line, li) => (
-              <div key={li} className="ac-header__spec-line">
-                <span className="ac-header__specs-dot" />
-                <span>{line}</span>
-              </div>
-            ))}
-          </div>
-        ))}
+      <div className="ac-header__heading">
+        <span className="ac-header__eyebrow">GPU CONTROL PRO</span>
+        <h1 className="ac-header__title">{title}</h1>
       </div>
-
-      <div className="ac-header__right">
-        <button className="ac-header__icon-btn" title="Layout view" aria-label="Layout view">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-            <path d="M4 4h7v16H4z" />
-            <path d="M14 4h6v7h-6z" />
-            <path d="M14 14h6v6h-6z" />
-            <text x="6.5" y="15" fontSize="8" fill="currentColor" stroke="none" fontWeight="700">R</text>
-          </svg>
-        </button>
-        <button className="ac-header__icon-btn ac-header__icon-btn--active" title="Grid view" aria-label="Grid view">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-            <rect x="3" y="3" width="8" height="8" rx="1" />
-            <rect x="13" y="3" width="8" height="8" rx="1" />
-            <rect x="3" y="13" width="8" height="8" rx="1" />
-            <rect x="13" y="13" width="8" height="8" rx="1" />
-          </svg>
-        </button>
+      <div className="ac-header__specs" aria-label="Detected hardware">
+        {cpuInfo?.model && <span className="ac-header__hardware"><span className="ac-header__specs-dot" />{cpuInfo.model}</span>}
+        {selectedGpu?.name && <span className="ac-header__hardware"><span className="ac-header__specs-dot ac-header__specs-dot--teal" />{selectedGpu.name}</span>}
       </div>
     </header>
   );
 }
+

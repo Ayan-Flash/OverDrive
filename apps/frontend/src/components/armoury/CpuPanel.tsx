@@ -4,17 +4,17 @@ import { motion, useSpring, useTransform } from 'framer-motion';
 import { PanelFrame } from './PanelFrame';
 
 /* ================================================================
-   CpuPanel — "CPU Core 0" info panel with frequency bar,
-   voltage, and temperature metrics. Enhanced with Framer Motion.
+   CpuPanel — CPU summary with thread frequency, utilization,
+   core counts, voltage, and package temperature.
    ================================================================ */
 
 interface CpuPanelProps {
-  coreIndex?: number;
   frequency: number;             // MHz
+  usage: number;                 // package utilization, percent
   voltage: number | null;        // Volts (null when unavailable)
   temperature: number | null;    // Celsius (null when unavailable)
+  memoryFrequency?: number | null; // MT/s, unavailable when the OS does not expose it
   maxFrequency?: number;
-  isElevated?: boolean;
 }
 
 function SpringValue({ value, unit = '', decimals = 0 }: { value: number; unit?: string; decimals?: number }) {
@@ -28,25 +28,30 @@ function SpringValue({ value, unit = '', decimals = 0 }: { value: number; unit?:
 }
 
 export function CpuPanel({
-  coreIndex = 0,
   frequency,
+  usage,
   voltage,
   temperature,
+  memoryFrequency = null,
   maxFrequency = 5000,
-  isElevated = false,
 }: CpuPanelProps) {
   const freqPercent = Math.min((frequency / maxFrequency) * 100, 100);
   const segmentCount = 20;
   const activeSegments = Math.round((freqPercent / 100) * segmentCount);
 
   return (
-    <PanelFrame title={`CPU Core ${coreIndex}`} className="ac-panel--flex1 ac-info-panel">
+    <PanelFrame title="CPU" className="ac-panel--flex1 ac-info-panel">
       {/* Frequency row */}
       <div className="ac-info-row">
         <span className="ac-info-row__label">Frequency</span>
         <span className="ac-info-row__value">
           <SpringValue value={frequency} unit="MHz" />
         </span>
+      </div>
+
+      <div className="ac-info-row">
+        <span className="ac-info-row__label">Usage</span>
+        <span className="ac-info-row__value"><SpringValue value={usage} unit="%" /></span>
       </div>
 
       {/* Segmented frequency bar with Framer Motion stagger/smooth layout */}
@@ -68,19 +73,12 @@ export function CpuPanel({
         })}
       </div>
 
-      {/* Voltage */}
       <div className="ac-info-row">
-        <span className="ac-info-row__label">CPU Core Voltage</span>
-        <span className="ac-info-row__value">
-          {voltage != null ? (
-            <SpringValue value={voltage} unit="V" decimals={3} />
-          ) : (
-            'N/A'
-          )}
-        </span>
+        <span className="ac-info-row__label">Memory Frequency</span>
+        <span className="ac-info-row__value">{memoryFrequency != null ? `${memoryFrequency} MT/s` : 'N/A'}</span>
       </div>
 
-      {/* Temperature */}
+      {/* Package temperature */}
       <div className="ac-info-row">
         <span className="ac-info-row__label">Temperature</span>
         <span className="ac-info-row__value" style={{ display: 'flex', alignItems: 'center' }}>
@@ -88,8 +86,20 @@ export function CpuPanel({
             <SpringValue value={temperature} unit="°C" />
           ) : (
             <span style={{ fontSize: '10px', color: 'var(--ac-text-muted)', fontWeight: 500 }}>
-              {isElevated ? 'N/A' : 'N/A (Requires Admin)'}
+              N/A (sensor unavailable)
             </span>
+          )}
+        </span>
+      </div>
+
+      {/* Voltage */}
+      <div className="ac-info-row">
+        <span className="ac-info-row__label">Voltage</span>
+        <span className="ac-info-row__value">
+          {voltage != null ? (
+            <SpringValue value={voltage * 1000} unit="mV" />
+          ) : (
+            'N/A'
           )}
         </span>
       </div>

@@ -119,8 +119,10 @@ impl SimulatedGpuProvider {
             fan_speed_percent: state.fan_speed + (load_factor * 15.0) + rng.gen_range(-1.0..1.0),
             fan_rpm: (state.fan_rpm as f64 * (state.fan_speed / 30.0)) as u32 + rng.gen_range(0..50),
             power_watts: state.base_power * (0.3 + load_factor * 0.7) + rng.gen_range(-2.0..2.0),
+            max_power_limit_watts: None,
             core_voltage_mv: state.base_voltage + state.voltage_offset as f64 + rng.gen_range(-5.0..5.0),
             core_utilization_percent: state.core_util,
+            core_utilization_available: true,
             memory_utilization_percent: state.mem_util,
         }
     }

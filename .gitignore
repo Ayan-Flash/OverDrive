@@ -39,3 +39,8 @@ temp/
 
 # Configuration
 *.local.*
+
+# Work logs and documentation
+WORK_LOG.md
+WORK_DONE.md
+

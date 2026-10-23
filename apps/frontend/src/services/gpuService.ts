@@ -19,8 +19,10 @@ export interface GPUData {
   fan_speed_percent: number;
   fan_rpm: number;
   power_watts: number;
+  max_power_limit_watts?: number | null;
   core_voltage_mv: number;
   core_utilization_percent: number;
+  core_utilization_available?: boolean;
   memory_utilization_percent: number;
 }
 

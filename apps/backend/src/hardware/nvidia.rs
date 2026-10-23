@@ -160,6 +160,19 @@ impl NvidiaProvider {
         if result == NVML_SUCCESS { Some(power as f64 / 1000.0) } else { None }
     }
 
+    fn read_max_power_limit(&self, lib: &Library, device: NvmlDevice) -> Option<f64> {
+        let func: Symbol<unsafe extern "C" fn(NvmlDevice, *mut u32, *mut u32) -> NvmlReturn> =
+            unsafe { lib.get(b"nvmlDeviceGetPowerManagementLimitConstraints").ok()? };
+        let mut min_mw = 0;
+        let mut max_mw = 0;
+        let result = unsafe { func(device, &mut min_mw, &mut max_mw) };
+        if result == NVML_SUCCESS && max_mw > 0 {
+            Some(max_mw as f64 / 1000.0)
+        } else {
+            None
+        }
+    }
+
     fn read_fan_speed(&self, lib: &Library, device: NvmlDevice) -> Option<f64> {
         let func: Symbol<unsafe extern "C" fn(NvmlDevice, u32, *mut u32) -> NvmlReturn> = unsafe {
             lib.get(b"nvmlDeviceGetFanSpeed_v2").ok()?
@@ -258,10 +271,12 @@ impl GpuProvider for NvidiaProvider {
             // physical RPM. Keep RPM unavailable instead of fabricating it.
             fan_rpm: 0,
             power_watts: power,
+            max_power_limit_watts: self.read_max_power_limit(lib_ref, *device),
             // NVML does not expose real per-core voltage on consumer GPUs, so we
             // report 0.0 here; the UI renders "N/A" rather than a fabricated value.
             core_voltage_mv: 0.0,
             core_utilization_percent: gpu_util.unwrap_or(0.0),
+            core_utilization_available: gpu_util.is_some(),
             memory_utilization_percent: mem_util.unwrap_or(0.0),
         })
     }

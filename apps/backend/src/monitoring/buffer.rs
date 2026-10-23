@@ -95,8 +95,10 @@ mod tests {
             fan_speed_percent: 0.0,
             fan_rpm: 0,
             power_watts: 0.0,
+            max_power_limit_watts: None,
             core_voltage_mv: 0.0,
             core_utilization_percent: 0.0,
+            core_utilization_available: true,
             memory_utilization_percent: 0.0,
         }
     }
