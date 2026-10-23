@@ -11,9 +11,9 @@
 //!   which reports current MHz per logical processor. When unavailable, the
 //!   platform-provided frequency is used without applying package-wide load
 //!   estimates to individual cores.
-//! - **Temperature** depends on the OS surfacing an ACPI/CPU thermal zone; when
-//!   none is available it is reported as `None` (UI shows "N/A") rather than a
-//!   fabricated number.
+//! - **Temperature** on Windows comes from a CPU-identified LibreHardwareMonitor
+//!   package/die sensor; on other platforms it uses a labeled CPU component.
+//!   Missing sensors are reported as `None` rather than a fabricated number.
 //! - **Voltage** is not exposed by the OS without a kernel-mode sensor driver
 //!   (e.g. LibreHardwareMonitor / WinRing0), so it is reported as `None`.
 
@@ -22,6 +22,8 @@ use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use sysinfo::{Components, System};
 
+#[cfg(windows)]
+use super::cpu_temperature::CpuTemperatureReader;
 use super::cpu_voltage::VoltageReader;
 
 /// Static CPU identity — queried once at startup.
@@ -62,6 +64,9 @@ pub struct CpuMonitor {
     info: CpuInfo,
     /// Rate-limited WMI voltage reader (updated every ~3s).
     voltage: VoltageReader,
+    /// Rate-limited CPU sensor reader (updated every ~3s).
+    #[cfg(windows)]
+    temperature: CpuTemperatureReader,
 }
 
 struct Inner {
@@ -114,11 +119,13 @@ impl CpuMonitor {
         Self {
             inner: Mutex::new(Inner {
                 sys,
-                components: Components::new_with_refreshed_list(),
+                components: new_components(),
                 max_freq_seen: 0,
             }),
             info,
             voltage: VoltageReader::new(),
+            #[cfg(windows)]
+            temperature: CpuTemperatureReader::new(),
         }
     }
 
@@ -138,6 +145,9 @@ impl CpuMonitor {
         #[cfg(not(windows))]
         let native_frequencies: Option<Vec<u64>> = None;
 
+        #[cfg(windows)]
+        let temperature_celsius = self.temperature.read();
+        #[cfg(not(windows))]
         let temperature_celsius = read_cpu_temperature(&mut inner.components);
 
         let cores: Vec<CpuCoreSample> = inner
@@ -155,7 +165,8 @@ impl CpuMonitor {
                     core_index: i,
                     frequency_mhz,
                     usage_percent: c.cpu_usage(),
-                    temperature_celsius,
+                    // The package sensor is not a per-core measurement.
+                    temperature_celsius: None,
                 }
             })
             .collect();
@@ -210,6 +221,17 @@ fn read_cpu_temperature(components: &mut Components) -> Option<f64> {
         }
     }
     None
+}
+
+#[cfg(windows)]
+fn new_components() -> Components {
+    // Windows sysinfo components are generic ACPI zones, not CPU-identified sensors.
+    Components::new()
+}
+
+#[cfg(not(windows))]
+fn new_components() -> Components {
+    Components::new_with_refreshed_list()
 }
 
 /// Native Windows per-logical-processor frequency query.

@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DashboardPage } from '../pages/DashboardPage';
+import { useAlertStore } from '../stores/alertStore';
 import { useGpuStore } from '../stores/gpuStore';
 import { useUiStore } from '../stores/uiStore';
 
@@ -25,6 +26,12 @@ vi.mock('../components/feature/RealtimeChart', () => ({
   RealtimeChart: () => <div>GPU history chart</div>,
 }));
 
+vi.mock('../services', () => ({
+  alertService: { getHistory: vi.fn(() => new Promise(() => {})) },
+  monitoringService: { isRunning: vi.fn(() => new Promise(() => {})) },
+  overlayService: { getDetectedGames: vi.fn(() => new Promise(() => {})) },
+}));
+
 describe('Dashboard overview', () => {
   beforeEach(() => {
     useGpuStore.setState({
@@ -37,23 +44,42 @@ describe('Dashboard overview', () => {
       loading: false,
       error: null,
     });
+    useAlertStore.setState({ alerts: [], rules: [], unacknowledgedCount: 0 });
     useUiStore.setState({ selectedGpuId: null, currentPage: 'dashboard' });
   });
 
-  it('shows unavailable readings instead of inventing hardware values', () => {
+  it('shows explicit unavailable states when hardware telemetry is missing', () => {
     render(<DashboardPage />);
 
+    expect(screen.getByText('CPU data unavailable')).toBeInTheDocument();
     expect(screen.getByText('No compatible GPU was detected.')).toBeInTheDocument();
-    expect(screen.getByText('Waiting for hardware')).toBeInTheDocument();
-    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+    expect(screen.getByText('System memory telemetry isn’t available.')).toBeInTheDocument();
+    expect(screen.getByText('Storage telemetry isn’t available.')).toBeInTheDocument();
+    expect(screen.getAllByRole('img', { name: 'Temperature: unavailable' })).toHaveLength(2);
   });
 
-  it('opens the existing hardware controls from the system summary', () => {
+  it('routes the header shortcuts to existing settings and hardware control pages', () => {
     render(<DashboardPage />);
+    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+    expect(useUiStore.getState().currentPage).toBe('settings');
 
-    fireEvent.click(screen.getByRole('button', { name: /open hardware controls/i }));
-
+    fireEvent.click(screen.getByRole('button', { name: /my pc/i }));
     expect(useUiStore.getState().currentPage).toBe('control');
   });
-});
 
+  it('routes each quick action to its existing destination', () => {
+    const { unmount } = render(<DashboardPage />);
+    const actions = [
+      ['Game Analysis', 'reports'],
+      ['Optimize PC', 'ai'],
+      ['System Health', 'alerts'],
+      ['Gaming Overlay', 'overlay'],
+    ] as const;
+
+    for (const [label, destination] of actions) {
+      fireEvent.click(screen.getByRole('button', { name: new RegExp(label, 'i') }));
+      expect(useUiStore.getState().currentPage).toBe(destination);
+    }
+    unmount();
+  });
+});

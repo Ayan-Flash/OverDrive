@@ -1,41 +1,127 @@
 import { useEffect, useState } from 'react';
-import { useGpuStore, useUiStore } from '../stores';
+import type { ReactNode } from 'react';
+import { alertService, monitoringService, overlayService } from '../services';
+import { useAlertStore, useGpuStore, useUiStore } from '../stores';
 import { useCpuData } from '../components/armoury/useCpuData';
-import { FanPanel, GameLauncher } from '../components/armoury';
-import { RealtimeChart } from '../components/feature/RealtimeChart';
+import { SegmentGauge } from '../components/armoury/SegmentGauge';
 
-function display(value: number | null | undefined, unit = '', decimals = 0) {
-  if (value == null || !Number.isFinite(value)) return '—';
-  return value.toFixed(decimals) + unit;
+type MonitoringState = 'checking' | 'running' | 'stopped' | 'unavailable';
+
+function reading(value: number | null | undefined, unit = '', precision = 0) {
+  if (value == null || !Number.isFinite(value)) return 'Unavailable';
+  return value.toFixed(precision) + unit;
 }
 
-function clampPercent(value: number | null | undefined) {
-  if (value == null || !Number.isFinite(value)) return 0;
-  return Math.min(100, Math.max(0, value));
-}
-
-function Metric({ label, value, unit }: { label: string; value: string; unit?: string }) {
+function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="overview-metric">
       <span>{label}</span>
-      <strong>{value}{unit && <small>{unit}</small>}</strong>
+      <strong>{value}</strong>
     </div>
+  );
+}
+
+function HardwareIcon({ kind }: { kind: 'cpu' | 'gpu' | 'ram' | 'storage' }) {
+  const paths: Record<typeof kind, ReactNode> = {
+    cpu: (
+      <>
+        <rect x="6" y="6" width="12" height="12" rx="2" />
+        <rect x="9" y="9" width="6" height="6" rx="1" />
+        <path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4" />
+      </>
+    ),
+    gpu: (
+      <>
+        <rect x="3" y="5" width="18" height="13" rx="2" />
+        <path d="M7 21h10m-5-3v3M7 9h8m-8 3h5" />
+      </>
+    ),
+    ram: (
+      <>
+        <rect x="3" y="7" width="18" height="10" rx="2" />
+        <path d="M7 7V4m5 3V4m5 3V4M7 17v3m5-3v3m5-3v3M7 11h2m3 0h2m3 0h1" />
+      </>
+    ),
+    storage: (
+      <>
+        <ellipse cx="12" cy="5" rx="8" ry="3" />
+        <path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" />
+      </>
+    ),
+  };
+
+  return (
+    <span className="overview-device-icon" aria-hidden="true">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {paths[kind]}
+      </svg>
+    </span>
+  );
+}
+
+function ActionIcon({ kind }: { kind: 'analysis' | 'optimize' | 'health' | 'overlay' }) {
+  const paths: Record<typeof kind, ReactNode> = {
+    analysis: (
+      <>
+        <path d="M4 19V9m5 10V5m5 14v-7m5 7V3" />
+      </>
+    ),
+    optimize: (
+      <>
+        <path d="M13 2 4 13h7l-1 9 10-12h-7l1-8Z" />
+      </>
+    ),
+    health: (
+      <>
+        <path d="M20.8 8.7c0 5.2-8.8 11-8.8 11s-8.8-5.8-8.8-11A4.7 4.7 0 0 1 12 6a4.7 4.7 0 0 1 8.8 2.7Z" />
+      </>
+    ),
+    overlay: (
+      <>
+        <rect x="3" y="4" width="18" height="14" rx="2" />
+        <path d="M8 21h8m-4-3v3M7 9h3v3H7zm7 0h3m-3 4h3" />
+      </>
+    ),
+  };
+  return (
+    <svg
+      className="overview-action-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {paths[kind]}
+    </svg>
   );
 }
 
 export function DashboardPage() {
   const gpus = useGpuStore((state) => state.gpus);
   const currentData = useGpuStore((state) => state.currentData);
-  const history = useGpuStore((state) => state.history);
   const error = useGpuStore((state) => state.error);
   const fetchData = useGpuStore((state) => state.fetchData);
-  const fetchHistory = useGpuStore((state) => state.fetchHistory);
-  const setFanSpeed = useGpuStore((state) => state.setFanSpeed);
   const selectedGpuId = useUiStore((state) => state.selectedGpuId);
   const setSelectedGpu = useUiStore((state) => state.setSelectedGpu);
   const navigateTo = useUiStore((state) => state.navigateTo);
+  const setAlerts = useAlertStore((state) => state.setAlerts);
+
   const cpu = useCpuData();
-  const [fanMode, setFanMode] = useState<'silence' | 'standard' | 'turbo' | 'full'>('standard');
+  const [monitoringState, setMonitoringState] = useState<MonitoringState>('checking');
+  const [alertsLoaded, setAlertsLoaded] = useState(false);
+  const [games, setGames] = useState<string[]>([]);
+  const [gamesLoaded, setGamesLoaded] = useState(false);
+  const [gamesAvailable, setGamesAvailable] = useState(true);
 
   useEffect(() => {
     if (!selectedGpuId) return;
@@ -44,160 +130,357 @@ export function DashboardPage() {
     return () => clearInterval(interval);
   }, [selectedGpuId, fetchData]);
 
+
   useEffect(() => {
-    if (selectedGpuId) void fetchHistory(selectedGpuId, 48);
-  }, [selectedGpuId, fetchHistory]);
+    let active = true;
+    void monitoringService
+      .isRunning()
+      .then((running) => {
+        if (active) setMonitoringState(running ? 'running' : 'stopped');
+      })
+      .catch(() => {
+        if (active) setMonitoringState('unavailable');
+      });
+    void alertService
+      .getHistory(100)
+      .then((items) => {
+        if (active) {
+          setAlerts(items);
+          setAlertsLoaded(true);
+        }
+      })
+      .catch(() => {
+        if (active) setAlertsLoaded(false);
+      });
+    void overlayService
+      .getDetectedGames()
+      .then((items) => {
+        if (active) {
+          setGames(items);
+          setGamesLoaded(true);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setGamesLoaded(true);
+          setGamesAvailable(false);
+        }
+      });
 
-  const handleFanModeChange = async (mode: string) => {
-    if (mode !== 'silence' && mode !== 'standard' && mode !== 'turbo' && mode !== 'full') return;
-    setFanMode(mode);
-    if (!selectedGpuId) return;
-    const speed = mode === 'silence' ? 0 : mode === 'standard' ? 35 : mode === 'turbo' ? 70 : 100;
-    await setFanSpeed(selectedGpuId, speed);
-  };
+    return () => {
+      active = false;
+    };
+  }, [setAlerts]);
 
+  const cpuDetected = cpu.model !== 'CPU';
+  const cpuHasData =
+    cpuDetected ||
+    cpu.cores.length > 0 ||
+    (Number.isFinite(cpu.frequency) && cpu.frequency > 0) ||
+    (cpu.temperature != null && Number.isFinite(cpu.temperature));
   const gpu = selectedGpuId ? currentData.get(selectedGpuId) : undefined;
   const selectedGpu = gpus.find((item) => item.id === selectedGpuId);
-  const gpuHistory = selectedGpuId ? history.get(selectedGpuId) ?? [] : [];
-  const hasCpu = cpu.model !== 'CPU';
-  const hasHardwareData = hasCpu || Boolean(gpu);
+  const cpuTemperature = cpuHasData && Number.isFinite(cpu.temperature) ? cpu.temperature : null;
+  const gpuTemperature =
+    gpu && Number.isFinite(gpu.temperature_celsius) ? gpu.temperature_celsius : null;
+  const gpuUtilization =
+    gpu && gpu.core_utilization_available !== false && Number.isFinite(gpu.core_utilization_percent)
+      ? gpu.core_utilization_percent
+      : null;
+  const gpuVram =
+    gpu &&
+    Number.isFinite(gpu.memory_used_mb) &&
+    Number.isFinite(gpu.memory_total_mb) &&
+    gpu.memory_total_mb > 0
+      ? (gpu.memory_used_mb / 1024).toFixed(1) +
+        ' / ' +
+        (gpu.memory_total_mb / 1024).toFixed(1) +
+        ' GB'
+      : 'Unavailable';
+  const activeWarnings = useAlertStore(
+    (state) =>
+      state.alerts.filter(
+        (alert) =>
+          !alert.acknowledged && (alert.severity === 'Warning' || alert.severity === 'Critical'),
+      ).length,
+  );
+  const monitoringLabel =
+    monitoringState === 'running'
+      ? 'Background monitor active'
+      : monitoringState === 'stopped'
+        ? 'Background monitor paused'
+        : monitoringState === 'checking'
+          ? 'Checking monitor service…'
+          : 'Monitor status unavailable';
 
   return (
     <main className="ac-overview">
-      <section className="overview-grid" aria-label="System overview">
-        <article className="overview-card overview-card--system">
-          <div className="overview-card__topline">
-            <span className="overview-kicker">SYSTEM SNAPSHOT</span>
-            <span className={'overview-status ' + (hasHardwareData ? 'overview-status--online' : '')}>
-              <span className="overview-status__dot" />
-              {hasHardwareData ? 'Telemetry available' : 'Waiting for hardware'}
-            </span>
-          </div>
-          <div className="overview-system__body">
-            <div>
-              <h2>Your system</h2>
-              <p>Live hardware readings from this PC.</p>
-            </div>
-            <div className="overview-system__identity">
-              <div className="overview-identity-row">
-                <span className="overview-identity-icon" aria-hidden="true">C</span>
-                <span><small>PROCESSOR</small><strong>{hasCpu ? cpu.model : 'Detecting processor…'}</strong></span>
-              </div>
-              <div className="overview-identity-row">
-                <span className="overview-identity-icon overview-identity-icon--teal" aria-hidden="true">G</span>
-                <span><small>GRAPHICS</small><strong>{selectedGpu?.name ?? (gpus.length ? 'Select a GPU' : 'No GPU detected')}</strong></span>
-              </div>
+      <div className="overview-shell">
+        <header className="overview-welcome">
+          <div className="overview-welcome__copy">
+            <span className="overview-eyebrow">HOME</span>
+            <h1>Welcome back</h1>
+            <p>Here’s how your PC is running today.</p>
+            <div className="overview-welcome__hardware">
+              <span>
+                <i className="overview-welcome__dot overview-welcome__dot--cpu" />
+                {cpuDetected ? cpu.model : cpuHasData ? 'Processor' : 'CPU data unavailable'}
+              </span>
+              <span>
+                <i className="overview-welcome__dot" />
+                {selectedGpu?.name ?? 'GPU not selected'}
+              </span>
             </div>
           </div>
-          <button className="overview-action" onClick={() => navigateTo('control')}>
-            Open hardware controls <span aria-hidden="true">↗</span>
-          </button>
-        </article>
+          <div className="overview-welcome__actions">
+            <button className="overview-button" onClick={() => navigateTo('settings')}>
+              Settings <span aria-hidden="true">›</span>
+            </button>
+            <button
+              className="overview-button overview-button--primary"
+              onClick={() => navigateTo('control')}
+            >
+              My PC <span aria-hidden="true">›</span>
+            </button>
+          </div>
+        </header>
 
-        <article className="overview-card overview-card--cpu">
-          <div className="overview-card__heading">
-            <div>
-              <span className="overview-kicker">PROCESSOR</span>
-              <h2>{hasCpu ? cpu.model : 'CPU'}</h2>
+        <div className="overview-workspace">
+          <aside className="overview-health" aria-labelledby="overview-health-title">
+            <div className="overview-health__heading">
+              <span className="overview-health__heart" aria-hidden="true">
+                ♡
+              </span>
+              <h2 id="overview-health-title">System health</h2>
             </div>
-            <span className="overview-chip">CPU</span>
-          </div>
-          <div className="overview-primary-reading">
-            <strong>{display(hasCpu ? cpu.usage : null, '%')}</strong>
-            <span>Utilization</span>
-          </div>
-          <div className="overview-progress" role="img" aria-label={'CPU utilization ' + display(hasCpu ? cpu.usage : null, '%')}>
-            <span style={{ width: clampPercent(hasCpu ? cpu.usage : null) + '%' }} />
-          </div>
-          <div className="overview-metrics">
-            <Metric label="Temperature" value={display(cpu.temperature, '°')} />
-            <Metric label="Frequency" value={display(cpu.frequency, ' MHz')} />
-            <Metric label="Cores / threads" value={cpu.logicalCores ? String(cpu.physicalCores || '—') + ' / ' + cpu.logicalCores : '—'} />
-          </div>
-        </article>
-
-        <article className="overview-card overview-card--gpu">
-          <div className="overview-card__heading">
-            <div>
-              <span className="overview-kicker">GRAPHICS</span>
-              <h2>{selectedGpu?.name ?? 'GPU telemetry'}</h2>
+            <div className="overview-health__status">
+              <span
+                className={
+                  'overview-health__status-dot ' +
+                  (monitoringState === 'running' ? 'overview-health__status-dot--live' : '')
+                }
+              />
+              <span>{monitoringLabel}</span>
             </div>
-            {gpus.length > 1 && (
-              <label className="overview-select-label">
-                <span className="sr-only">Select graphics card</span>
-                <select value={selectedGpuId ?? ''} onChange={(event) => setSelectedGpu(event.target.value)} aria-label="Select graphics card">
-                  {gpus.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-                </select>
-              </label>
-            )}
-          </div>
-          {gpu ? (
-            <>
-              <div className="overview-primary-reading">
-                <strong>{display(gpu.temperature_celsius, '°')}</strong>
-                <span>GPU temperature</span>
+            <div className="overview-health__visual" aria-hidden="true">
+              <div className="overview-health__bar" />
+              <div className="overview-health__ticks">
+                {Array.from({ length: 22 }, (_, index) => (
+                  <i key={index} />
+                ))}
               </div>
-              <div className="overview-progress overview-progress--cyan" role="img" aria-label={'GPU utilization ' + display(gpu.core_utilization_available === false ? null : gpu.core_utilization_percent, '%')}>
-                <span style={{ width: clampPercent(gpu.core_utilization_available === false ? null : gpu.core_utilization_percent) + '%' }} />
+            </div>
+            <div className="overview-health__warning">
+              <strong>{alertsLoaded ? activeWarnings : '—'}</strong>
+              <span>Unacknowledged warnings</span>
+            </div>
+            <button className="overview-health__link" onClick={() => navigateTo('alerts')}>
+              Review alerts <span aria-hidden="true">›</span>
+            </button>
+            <p className="overview-health__note">
+              The color bar is decorative and does not represent a health score.
+            </p>
+          </aside>
+
+          <div className="overview-main">
+            <section className="overview-hardware-grid" aria-label="Hardware status">
+              <article className="overview-hardware-card">
+                <div className="overview-hardware-card__top">
+                  <HardwareIcon kind="cpu" />
+                  <div className="overview-hardware-card__identity">
+                    <h2>CPU</h2>
+                    <p>
+                      {cpuDetected
+                        ? cpu.model
+                        : cpuHasData
+                          ? 'Processor'
+                          : 'Processor details unavailable'}
+                    </p>
+                  </div>
+                </div>
+                <SegmentGauge
+                  value={cpuTemperature}
+                  min={0}
+                  max={100}
+                  unit="°C"
+                  label="Temperature"
+                  precision={0}
+                />
+                <div className="overview-hardware-card__metrics">
+                  <Metric label="Utilization" value={reading(cpuHasData ? cpu.usage : null, '%')} />
+                  <Metric
+                    label="Clock"
+                    value={reading(cpuHasData ? cpu.frequency : null, ' MHz')}
+                  />
+                  <Metric
+                    label="Cores / threads"
+                    value={
+                      cpuHasData && cpu.logicalCores > 0
+                        ? cpu.physicalCores + ' / ' + cpu.logicalCores
+                        : 'Unavailable'
+                    }
+                  />
+                </div>
+              </article>
+
+              <article className="overview-hardware-card">
+                <div className="overview-hardware-card__top">
+                  <HardwareIcon kind="gpu" />
+                  <div className="overview-hardware-card__identity">
+                    <h2>GPU</h2>
+                    <p>{selectedGpu?.name ?? 'Graphics card not selected'}</p>
+                  </div>
+                  {gpus.length > 1 && (
+                    <label className="overview-select-label">
+                      <span className="sr-only">Select graphics card</span>
+                      <select
+                        value={selectedGpuId ?? ''}
+                        onChange={(event) => setSelectedGpu(event.target.value)}
+                        aria-label="Select graphics card"
+                      >
+                        {gpus.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                </div>
+                {gpu ? (
+                  <>
+                    <SegmentGauge
+                      value={gpuTemperature}
+                      min={0}
+                      max={100}
+                      unit="°C"
+                      label="Temperature"
+                      precision={0}
+                    />
+                    <div className="overview-hardware-card__metrics overview-hardware-card__metrics--gpu">
+                      <Metric label="Utilization" value={reading(gpuUtilization, '%')} />
+                      <Metric label="VRAM" value={gpuVram} />
+                      <Metric label="Core clock" value={reading(gpu.core_clock_mhz, ' MHz')} />
+                      <Metric label="Power" value={reading(gpu.power_watts, ' W')} />
+                      <Metric label="Fan" value={reading(gpu.fan_speed_percent, '%')} />
+                    </div>
+                    <button
+                      className="overview-hardware-card__more"
+                      onClick={() => navigateTo('reports')}
+                    >
+                      GPU history <span aria-hidden="true">›</span>
+                    </button>
+                  </>
+                ) : (
+                  <div className="overview-hardware-card__empty">
+                    <SegmentGauge value={null} min={0} max={100} unit="°C" label="Temperature" />
+                    <p>
+                      {gpus.length
+                        ? 'Waiting for the first GPU reading.'
+                        : 'No compatible GPU was detected.'}
+                    </p>
+                    {error && (
+                      <small className="overview-error">
+                        {selectedGpuId
+                          ? 'GPU telemetry could not be retrieved.'
+                          : 'GPU detection could not be reached.'}
+                      </small>
+                    )}
+                    {selectedGpuId && (
+                      <button onClick={() => void fetchData(selectedGpuId)}>Retry reading</button>
+                    )}
+                  </div>
+                )}
+              </article>
+
+              <article className="overview-hardware-card overview-hardware-card--unavailable">
+                <div className="overview-hardware-card__top">
+                  <HardwareIcon kind="ram" />
+                  <div className="overview-hardware-card__identity">
+                    <h2>Memory</h2>
+                    <p>System RAM</p>
+                  </div>
+                </div>
+                <div className="overview-unavailable-state">
+                  <span>System memory telemetry isn’t available.</span>
+                  <small>This app does not currently provide RAM capacity or usage readings.</small>
+                </div>
+              </article>
+
+              <article className="overview-hardware-card overview-hardware-card--unavailable">
+                <div className="overview-hardware-card__top">
+                  <HardwareIcon kind="storage" />
+                  <div className="overview-hardware-card__identity">
+                    <h2>Storage</h2>
+                    <p>Disk capacity and usage</p>
+                  </div>
+                </div>
+                <div className="overview-unavailable-state">
+                  <span>Storage telemetry isn’t available.</span>
+                  <small>No capacity or free-space data is exposed by current services.</small>
+                </div>
+              </article>
+            </section>
+
+            <section
+              className="overview-quick-actions"
+              aria-labelledby="overview-quick-actions-title"
+            >
+              <h2 id="overview-quick-actions-title">Quick actions</h2>
+              <div className="overview-quick-actions__grid">
+                <button className="overview-quick-action" onClick={() => navigateTo('reports')}>
+                  <ActionIcon kind="analysis" />
+                  <span className="overview-quick-action__copy">
+                    <strong>Game Analysis</strong>
+                    <small>
+                      {!gamesLoaded
+                        ? 'Checking detected games…'
+                        : !gamesAvailable
+                          ? 'Game detection unavailable'
+                          : games.length
+                            ? games.slice(0, 2).join(' · ')
+                            : 'No games detected'}
+                    </small>
+                  </span>
+                  <span className="overview-quick-action__arrow" aria-hidden="true">
+                    ›
+                  </span>
+                </button>
+                <button className="overview-quick-action" onClick={() => navigateTo('ai')}>
+                  <ActionIcon kind="optimize" />
+                  <span className="overview-quick-action__copy">
+                    <strong>Optimize PC</strong>
+                    <small>Insights and supported tuning suggestions</small>
+                  </span>
+                  <span className="overview-quick-action__arrow" aria-hidden="true">
+                    ›
+                  </span>
+                </button>
+                <button className="overview-quick-action" onClick={() => navigateTo('alerts')}>
+                  <ActionIcon kind="health" />
+                  <span className="overview-quick-action__copy">
+                    <strong>System Health</strong>
+                    <small>Alerts, thresholds, and history</small>
+                  </span>
+                  <span className="overview-quick-action__arrow" aria-hidden="true">
+                    ›
+                  </span>
+                </button>
+                <button className="overview-quick-action" onClick={() => navigateTo('overlay')}>
+                  <ActionIcon kind="overlay" />
+                  <span className="overview-quick-action__copy">
+                    <strong>Gaming Overlay</strong>
+                    <small>Configure on-screen hardware metrics</small>
+                  </span>
+                  <span className="overview-quick-action__arrow" aria-hidden="true">
+                    ›
+                  </span>
+                </button>
               </div>
-              <div className="overview-metrics overview-metrics--gpu">
-                <Metric label="Utilization" value={display(gpu.core_utilization_available === false ? null : gpu.core_utilization_percent, '%')} />
-                <Metric label="VRAM" value={gpu.memory_total_mb ? (gpu.memory_used_mb / 1024).toFixed(1) + ' / ' + (gpu.memory_total_mb / 1024).toFixed(1) : '—'} unit=" GB" />
-                <Metric label="Core clock" value={display(gpu.core_clock_mhz, ' MHz')} />
-                <Metric label="Board power" value={display(gpu.power_watts, ' W')} />
-                <Metric label="Fan speed" value={display(gpu.fan_speed_percent, '%')} />
-              </div>
-            </>
-          ) : (
-            <div className="overview-unavailable">
-              <span>{gpus.length ? 'Waiting for the first GPU reading…' : 'No compatible GPU was detected.'}</span>
-              {error && <span className="overview-error">{error}</span>}
-              {selectedGpuId && <button onClick={() => void fetchData(selectedGpuId)}>Retry reading</button>}
-            </div>
-          )}
-        </article>
-
-        <article className="overview-card overview-card--history">
-          <div className="overview-card__heading">
-            <div>
-              <span className="overview-kicker">RECENT HISTORY</span>
-              <h2>GPU temperature</h2>
-            </div>
-            <span className="overview-chart-unit">°C</span>
+            </section>
           </div>
-          <div className="overview-history-chart">
-            <RealtimeChart data={gpuHistory} metric="temp" color="#b78af7" label="Temperature" unit="°C" height={112} />
-          </div>
-          <p className="overview-card__note">Historical readings provided by the existing GPU monitor.</p>
-        </article>
-
-        <section className="overview-card overview-card--shortcuts" aria-labelledby="overview-shortcuts-heading">
-          <div className="overview-card__heading">
-            <div>
-              <span className="overview-kicker">TOOLS</span>
-              <h2 id="overview-shortcuts-heading">Quick access</h2>
-            </div>
-          </div>
-          <div className="overview-shortcut-list">
-            <button onClick={() => navigateTo('reports')}><span>Performance Lab</span><small>Saved reports and analysis</small><b aria-hidden="true">↗</b></button>
-            <button onClick={() => navigateTo('ai')}><span>AI Insights</span><small>Anomalies and tuning suggestions</small><b aria-hidden="true">↗</b></button>
-            <button onClick={() => navigateTo('alerts')}><span>System alerts</span><small>Thresholds and alert history</small><b aria-hidden="true">↗</b></button>
-            <button onClick={() => navigateTo('overlay')}><span>Gaming overlay</span><small>On-screen hardware metrics</small><b aria-hidden="true">↗</b></button>
-          </div>
-        </section>
-
-        <div className="overview-tool-slot overview-tool-slot--fan">
-          <FanPanel
-            activeMode={fanMode}
-            onModeChange={handleFanModeChange}
-            rpm={gpu && gpu.fan_rpm > 0 ? gpu.fan_rpm : null}
-            percent={gpu ? gpu.fan_speed_percent : null}
-          />
         </div>
-        <div className="overview-tool-slot overview-tool-slot--games">
-          <GameLauncher />
-        </div>
-      </section>
+      </div>
     </main>
   );
 }
