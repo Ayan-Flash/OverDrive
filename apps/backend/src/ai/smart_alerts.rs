@@ -34,9 +34,9 @@ pub struct MetricBaseline {
 pub struct ContextInfo {
     pub context: SystemContext,
     pub confidence: f64,
-    pub avg_utilization: f64,
-    pub avg_temperature: f64,
-    pub avg_power: f64,
+    pub avg_utilization: Option<f64>,
+    pub avg_temperature: Option<f64>,
+    pub avg_power: Option<f64>,
     pub duration_secs: u64,
 }
 
@@ -206,7 +206,7 @@ impl BaselineLearner {
 }
 
 pub struct ContextDetector {
-    samples: Vec<(i64, f64, f64, f64)>,
+    samples: Vec<(i64, Option<f64>, Option<f64>, Option<f64>)>,
     current: ContextInfo,
 }
 
@@ -223,9 +223,9 @@ impl ContextDetector {
             current: ContextInfo {
                 context: SystemContext::Unknown,
                 confidence: 0.0,
-                avg_utilization: 0.0,
-                avg_temperature: 0.0,
-                avg_power: 0.0,
+                avg_utilization: None,
+                avg_temperature: None,
+                avg_power: None,
                 duration_secs: 0,
             },
         }
@@ -246,24 +246,20 @@ impl ContextDetector {
         }
 
         let recent: Vec<_> = self.samples.iter().rev().take(60).collect();
-        let n = recent.len() as f64;
-        let avg_util: f64 = recent.iter().map(|(_, u, _, _)| *u).sum::<f64>() / n;
-        let avg_temp: f64 = recent.iter().map(|(_, _, t, _)| *t).sum::<f64>() / n;
-        let avg_power: f64 = recent.iter().map(|(_, _, _, p)| *p).sum::<f64>() / n;
+        let avg = |iter: Vec<f64>| (!iter.is_empty()).then(|| iter.iter().sum::<f64>() / iter.len() as f64);
+        let avg_util = avg(recent.iter().filter_map(|(_,u,_,_)| *u).collect());
+        let avg_temp = avg(recent.iter().filter_map(|(_,_,t,_)| *t).collect());
+        let avg_power = avg(recent.iter().filter_map(|(_,_,_,p)| *p).collect());
 
-        let util_variance = recent.iter().map(|(_, u, _, _)| (u - avg_util).powi(2)).sum::<f64>() / n;
-        let util_std_dev = util_variance.sqrt();
+        let util_std_dev = avg_util.map(|mean| avg(recent.iter().filter_map(|(_,u,_,_)| u.map(|v| (v - mean).powi(2))).collect()).unwrap_or(0.0).sqrt());
 
-        let (context, confidence) = if avg_util < 5.0 && avg_temp < 50.0 {
-            (SystemContext::Idle, 0.9)
-        } else if avg_util > 80.0 && util_std_dev < 15.0 && avg_temp > 65.0 {
-            (SystemContext::Benchmarking, 0.8)
-        } else if avg_util > 40.0 && util_std_dev > 20.0 {
-            (SystemContext::Gaming, 0.7)
-        } else if avg_util > 5.0 {
-            (SystemContext::Normal, 0.6)
-        } else {
-            (SystemContext::Unknown, 0.3)
+        let (context, confidence) = match (avg_util, avg_temp, util_std_dev) {
+            (Some(util), Some(temp), Some(_)) if util < 5.0 && temp < 50.0 => (SystemContext::Idle, 0.9),
+            (Some(util), Some(temp), Some(std_dev)) if util > 80.0 && std_dev < 15.0 && temp > 65.0 => (SystemContext::Benchmarking, 0.8),
+            (Some(util), _, Some(std_dev)) if util > 40.0 && std_dev > 20.0 => (SystemContext::Gaming, 0.7),
+            (Some(util), _, _) if util > 5.0 => (SystemContext::Normal, 0.6),
+            (Some(_), Some(_), _) => (SystemContext::Unknown, 0.3),
+            _ => (SystemContext::Unknown, 0.0),
         };
 
         let context_changed = self.current.context != context;
@@ -293,9 +289,9 @@ impl ContextDetector {
         self.current = ContextInfo {
             context: SystemContext::Unknown,
             confidence: 0.0,
-            avg_utilization: 0.0,
-            avg_temperature: 0.0,
-            avg_power: 0.0,
+            avg_utilization: None,
+            avg_temperature: None,
+            avg_power: None,
             duration_secs: 0,
         };
     }
@@ -394,7 +390,7 @@ impl SmartAlertEngine {
 
         let util = sample.core_utilization_percent;
         for (name, value) in &metrics {
-            self.learner.feed(name, *value, util);
+            if let (Some(value), Some(util)) = (value, util) { self.learner.feed(name, *value, util); }
         }
     }
 

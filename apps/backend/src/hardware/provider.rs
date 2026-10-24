@@ -25,33 +25,28 @@ pub struct GpuIdentity {
     pub name: String,
     pub vendor: GpuVendor,
     pub index: u32,
-    pub memory_total_mb: u64,
+    pub memory_total_mb: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuSample {
     pub gpu_id: String,
     pub timestamp: i64,
-    pub temperature_celsius: f64,
-    pub core_clock_mhz: f64,
-    pub memory_clock_mhz: f64,
-    pub memory_used_mb: u64,
-    pub memory_total_mb: u64,
-    pub fan_speed_percent: f64,
-    pub fan_rpm: u32,
-    pub power_watts: f64,
+    pub temperature_celsius: Option<f64>,
+    pub core_clock_mhz: Option<f64>,
+    pub memory_clock_mhz: Option<f64>,
+    pub memory_used_mb: Option<u64>,
+    pub memory_total_mb: Option<u64>,
+    pub fan_speed_percent: Option<f64>,
+    pub fan_rpm: Option<u32>,
+    pub power_watts: Option<f64>,
     /// Maximum graphics power limit exposed by the driver, when available.
     #[serde(default)]
     pub max_power_limit_watts: Option<f64>,
-    pub core_voltage_mv: f64,
-    pub core_utilization_percent: f64,
-    /// False when the provider cannot read utilization; a zero reading is otherwise valid.
-    #[serde(default = "default_true")]
-    pub core_utilization_available: bool,
-    pub memory_utilization_percent: f64,
+    pub core_voltage_mv: Option<f64>,
+    pub core_utilization_percent: Option<f64>,
+    pub memory_utilization_percent: Option<f64>,
 }
-
-fn default_true() -> bool { true }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuControlState {
@@ -70,7 +65,11 @@ pub trait GpuProvider: Send + Sync {
     fn read_control_state(&self, gpu_id: &str) -> Result<GpuControlState, GpuProviderError>;
     fn set_fan_speed(&self, gpu_id: &str, percent: f64) -> Result<(), GpuProviderError>;
     fn set_core_clock_offset(&self, gpu_id: &str, offset_mhz: i32) -> Result<(), GpuProviderError>;
-    fn set_memory_clock_offset(&self, gpu_id: &str, offset_mhz: i32) -> Result<(), GpuProviderError>;
+    fn set_memory_clock_offset(
+        &self,
+        gpu_id: &str,
+        offset_mhz: i32,
+    ) -> Result<(), GpuProviderError>;
     fn set_power_limit(&self, gpu_id: &str, percent: f64) -> Result<(), GpuProviderError>;
     fn set_voltage_offset(&self, gpu_id: &str, offset_mv: i32) -> Result<(), GpuProviderError>;
 }
@@ -85,4 +84,34 @@ pub enum GpuProviderError {
     ControlError(String),
     #[error("Provider not available: {0}")]
     NotAvailable(String),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn gpu_zero_is_distinct_from_unsupported_and_null_serializes() {
+        let mut sample = GpuSample {
+            gpu_id: "test".into(),
+            timestamp: 0,
+            temperature_celsius: Some(0.0),
+            core_clock_mhz: None,
+            memory_clock_mhz: None,
+            memory_used_mb: None,
+            memory_total_mb: None,
+            fan_speed_percent: None,
+            fan_rpm: None,
+            power_watts: None,
+            max_power_limit_watts: None,
+            core_voltage_mv: None,
+            core_utilization_percent: Some(0.0),
+            memory_utilization_percent: None,
+        };
+        let value = serde_json::to_value(&sample).unwrap();
+        assert_eq!(value["temperature_celsius"], 0.0);
+        assert_eq!(value["core_clock_mhz"], serde_json::Value::Null);
+        assert_eq!(value["power_watts"], serde_json::Value::Null);
+        sample.power_watts = Some(0.0);
+        assert_eq!(serde_json::to_value(&sample).unwrap()["power_watts"], 0.0);
+    }
 }

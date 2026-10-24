@@ -36,3 +36,24 @@ export const cpuService = {
   getInfo: () => invoke<CpuInfo>('get_cpu_info'),
   getSample: () => invoke<CpuSample>('get_cpu_sample'),
 };
+
+export interface RamTelemetry {
+  total_bytes: number;
+  available_bytes: number;
+  used_bytes: number;
+  utilization_percent: number;
+}
+
+export interface StorageTelemetry {
+  volume: string;
+  total_bytes: number;
+  user_available_bytes: number;
+  volume_free_bytes: number;
+  used_bytes: number;
+  utilization_percent: number;
+}
+
+export const systemTelemetryService = {
+  getRam: () => invoke<RamTelemetry>('get_ram_telemetry'),
+  getStorage: () => invoke<StorageTelemetry[]>('get_storage_telemetry'),
+};

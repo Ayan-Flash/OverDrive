@@ -55,15 +55,15 @@ pub async fn send_discord_report(
     let samples = state.monitoring.get_history(gpu_id, 1);
     let sample = samples.first().ok_or("No GPU data available")?;
 
-    let metrics = vec![
-        ("Temperature".into(), sample.temperature_celsius, "°C".into()),
-        ("GPU Utilization".into(), sample.core_utilization_percent, "%".into()),
-        ("Memory Used".into(), sample.memory_used_mb as f64, "MB".into()),
-        ("Fan Speed".into(), sample.fan_speed_percent, "%".into()),
-        ("Power Draw".into(), sample.power_watts, "W".into()),
-        ("Core Clock".into(), sample.core_clock_mhz, "MHz".into()),
-        ("Memory Clock".into(), sample.memory_clock_mhz, "MHz".into()),
-    ];
+    let metrics: Vec<(String, f64, String)> = [
+        ("Temperature", sample.temperature_celsius, "°C"),
+        ("GPU Utilization", sample.core_utilization_percent, "%"),
+        ("Memory Used", sample.memory_used_mb.map(|v| v as f64), "MB"),
+        ("Fan Speed", sample.fan_speed_percent, "%"),
+        ("Power Draw", sample.power_watts, "W"),
+        ("Core Clock", sample.core_clock_mhz, "MHz"),
+        ("Memory Clock", sample.memory_clock_mhz, "MHz"),
+    ].into_iter().filter_map(|(label, value, unit)| value.map(|v| (label.into(), v, unit.into()))).collect();
 
     DiscordWebhook::send_report(&webhook_url, "GPUControl Pro", "", "GPU 0", &metrics).await
 }
@@ -84,37 +84,37 @@ pub async fn start_obs_source(
                 metrics: vec![
                     crate::integrations::obs::ObsMetric {
                         label: "Temperature".into(),
-                        value: format!("{:.1}", s.temperature_celsius),
+                        value: s.temperature_celsius.map(|v| format!("{v:.1}")).unwrap_or_else(|| "Unavailable".into()),
                         unit: "°C".into(),
                     },
                     crate::integrations::obs::ObsMetric {
                         label: "GPU".into(),
-                        value: format!("{:.1}", s.core_utilization_percent),
+                        value: s.core_utilization_percent.map(|v| format!("{v:.1}")).unwrap_or_else(|| "Unavailable".into()),
                         unit: "%".into(),
                     },
                     crate::integrations::obs::ObsMetric {
                         label: "VRAM".into(),
-                        value: format!("{:.1}", s.memory_used_mb),
+                        value: s.memory_used_mb.map(|v| format!("{v:.1}")).unwrap_or_else(|| "Unavailable".into()),
                         unit: "MB".into(),
                     },
                     crate::integrations::obs::ObsMetric {
                         label: "Fan".into(),
-                        value: format!("{:.1}", s.fan_speed_percent),
+                        value: s.fan_speed_percent.map(|v| format!("{v:.1}")).unwrap_or_else(|| "Unavailable".into()),
                         unit: "%".into(),
                     },
                     crate::integrations::obs::ObsMetric {
                         label: "Power".into(),
-                        value: format!("{:.1}", s.power_watts),
+                        value: s.power_watts.map(|v| format!("{v:.1}")).unwrap_or_else(|| "Unavailable".into()),
                         unit: "W".into(),
                     },
                     crate::integrations::obs::ObsMetric {
                         label: "Core Clock".into(),
-                        value: format!("{:.0}", s.core_clock_mhz),
+                        value: s.core_clock_mhz.map(|v| format!("{v:.0}")).unwrap_or_else(|| "Unavailable".into()),
                         unit: "MHz".into(),
                     },
                     crate::integrations::obs::ObsMetric {
                         label: "Mem Clock".into(),
-                        value: format!("{:.0}", s.memory_clock_mhz),
+                        value: s.memory_clock_mhz.map(|v| format!("{v:.0}")).unwrap_or_else(|| "Unavailable".into()),
                         unit: "MHz".into(),
                     },
                 ],

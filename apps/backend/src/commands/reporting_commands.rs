@@ -18,7 +18,12 @@ pub async fn generate_report(
     let store = ReportStore::new();
 
     let gpu_ids = if report.config.gpu_ids.is_empty() {
-        state.monitoring.gpus().iter().map(|g| g.id.clone()).collect()
+        state
+            .monitoring
+            .gpus()
+            .iter()
+            .map(|g| g.id.clone())
+            .collect()
     } else {
         report.config.gpu_ids.clone()
     };
@@ -53,92 +58,120 @@ pub async fn generate_report(
         }
 
         if report.config.include_temperature {
-            let vals: Vec<f64> = samples.iter().map(|s| s.temperature_celsius).collect();
-            metrics.push(MetricRow {
-                metric: "Temperature".into(),
-                current: *vals.last().unwrap_or(&0.0),
-                min: vals.iter().cloned().fold(f64::MAX, f64::min),
-                max: vals.iter().cloned().fold(f64::MIN, f64::max),
-                avg: vals.iter().sum::<f64>() / vals.len() as f64,
-                unit: "°C".into(),
-            });
+            let vals: Vec<f64> = samples
+                .iter()
+                .filter_map(|s| s.temperature_celsius)
+                .collect();
+            if let Some(current) = samples.last().and_then(|s| s.temperature_celsius) {
+                metrics.push(MetricRow {
+                    metric: "Temperature".into(),
+                    current,
+                    min: vals.iter().cloned().fold(f64::MAX, f64::min),
+                    max: vals.iter().cloned().fold(f64::MIN, f64::max),
+                    avg: vals.iter().sum::<f64>() / vals.len() as f64,
+                    unit: "°C".into(),
+                });
+            }
         }
 
         if report.config.include_utilization {
-            let vals: Vec<f64> = samples.iter().map(|s| s.core_utilization_percent).collect();
-            metrics.push(MetricRow {
-                metric: "GPU Utilization".into(),
-                current: *vals.last().unwrap_or(&0.0),
-                min: vals.iter().cloned().fold(f64::MAX, f64::min),
-                max: vals.iter().cloned().fold(f64::MIN, f64::max),
-                avg: vals.iter().sum::<f64>() / vals.len() as f64,
-                unit: "%".into(),
-            });
+            let vals: Vec<f64> = samples
+                .iter()
+                .filter_map(|s| s.core_utilization_percent)
+                .collect();
+            if let Some(current) = samples.last().and_then(|s| s.core_utilization_percent) {
+                metrics.push(MetricRow {
+                    metric: "GPU Utilization".into(),
+                    current,
+                    min: vals.iter().cloned().fold(f64::MAX, f64::min),
+                    max: vals.iter().cloned().fold(f64::MIN, f64::max),
+                    avg: vals.iter().sum::<f64>() / vals.len() as f64,
+                    unit: "%".into(),
+                });
+            }
 
-            let vals: Vec<f64> = samples.iter().map(|s| s.memory_used_mb as f64).collect();
-            metrics.push(MetricRow {
-                metric: "Memory Used".into(),
-                current: *vals.last().unwrap_or(&0.0),
-                min: vals.iter().cloned().fold(f64::MAX, f64::min),
-                max: vals.iter().cloned().fold(f64::MIN, f64::max),
-                avg: vals.iter().sum::<f64>() / vals.len() as f64,
-                unit: "MB".into(),
-            });
+            let vals: Vec<f64> = samples
+                .iter()
+                .filter_map(|s| s.memory_used_mb.map(|v| v as f64))
+                .collect();
+            if let Some(current) = samples
+                .last()
+                .and_then(|s| s.memory_used_mb.map(|v| v as f64))
+            {
+                metrics.push(MetricRow {
+                    metric: "Memory Used".into(),
+                    current,
+                    min: vals.iter().cloned().fold(f64::MAX, f64::min),
+                    max: vals.iter().cloned().fold(f64::MIN, f64::max),
+                    avg: vals.iter().sum::<f64>() / vals.len() as f64,
+                    unit: "MB".into(),
+                });
+            }
         }
 
         if report.config.include_clocks {
-            let vals: Vec<f64> = samples.iter().map(|s| s.core_clock_mhz).collect();
-            metrics.push(MetricRow {
-                metric: "Core Clock".into(),
-                current: *vals.last().unwrap_or(&0.0),
-                min: vals.iter().cloned().fold(f64::MAX, f64::min),
-                max: vals.iter().cloned().fold(f64::MIN, f64::max),
-                avg: vals.iter().sum::<f64>() / vals.len() as f64,
-                unit: "MHz".into(),
-            });
+            let vals: Vec<f64> = samples.iter().filter_map(|s| s.core_clock_mhz).collect();
+            if let Some(current) = samples.last().and_then(|s| s.core_clock_mhz) {
+                metrics.push(MetricRow {
+                    metric: "Core Clock".into(),
+                    current,
+                    min: vals.iter().cloned().fold(f64::MAX, f64::min),
+                    max: vals.iter().cloned().fold(f64::MIN, f64::max),
+                    avg: vals.iter().sum::<f64>() / vals.len() as f64,
+                    unit: "MHz".into(),
+                });
+            }
 
-            let vals: Vec<f64> = samples.iter().map(|s| s.memory_clock_mhz).collect();
-            metrics.push(MetricRow {
-                metric: "Memory Clock".into(),
-                current: *vals.last().unwrap_or(&0.0),
-                min: vals.iter().cloned().fold(f64::MAX, f64::min),
-                max: vals.iter().cloned().fold(f64::MIN, f64::max),
-                avg: vals.iter().sum::<f64>() / vals.len() as f64,
-                unit: "MHz".into(),
-            });
+            let vals: Vec<f64> = samples.iter().filter_map(|s| s.memory_clock_mhz).collect();
+            if let Some(current) = samples.last().and_then(|s| s.memory_clock_mhz) {
+                metrics.push(MetricRow {
+                    metric: "Memory Clock".into(),
+                    current,
+                    min: vals.iter().cloned().fold(f64::MAX, f64::min),
+                    max: vals.iter().cloned().fold(f64::MIN, f64::max),
+                    avg: vals.iter().sum::<f64>() / vals.len() as f64,
+                    unit: "MHz".into(),
+                });
+            }
         }
 
         if report.config.include_fan {
-            let vals: Vec<f64> = samples.iter().map(|s| s.fan_speed_percent).collect();
-            metrics.push(MetricRow {
-                metric: "Fan Speed".into(),
-                current: *vals.last().unwrap_or(&0.0),
-                min: vals.iter().cloned().fold(f64::MAX, f64::min),
-                max: vals.iter().cloned().fold(f64::MIN, f64::max),
-                avg: vals.iter().sum::<f64>() / vals.len() as f64,
-                unit: "%".into(),
-            });
+            let vals: Vec<f64> = samples.iter().filter_map(|s| s.fan_speed_percent).collect();
+            if let Some(current) = samples.last().and_then(|s| s.fan_speed_percent) {
+                metrics.push(MetricRow {
+                    metric: "Fan Speed".into(),
+                    current,
+                    min: vals.iter().cloned().fold(f64::MAX, f64::min),
+                    max: vals.iter().cloned().fold(f64::MIN, f64::max),
+                    avg: vals.iter().sum::<f64>() / vals.len() as f64,
+                    unit: "%".into(),
+                });
+            }
         }
 
         if report.config.include_power {
-            let vals: Vec<f64> = samples.iter().map(|s| s.power_watts).collect();
-            metrics.push(MetricRow {
-                metric: "Power Draw".into(),
-                current: *vals.last().unwrap_or(&0.0),
-                min: vals.iter().cloned().fold(f64::MAX, f64::min),
-                max: vals.iter().cloned().fold(f64::MIN, f64::max),
-                avg: vals.iter().sum::<f64>() / vals.len() as f64,
-                unit: "W".into(),
-            });
+            let vals: Vec<f64> = samples.iter().filter_map(|s| s.power_watts).collect();
+            if let Some(current) = samples.last().and_then(|s| s.power_watts) {
+                metrics.push(MetricRow {
+                    metric: "Power Draw".into(),
+                    current,
+                    min: vals.iter().cloned().fold(f64::MAX, f64::min),
+                    max: vals.iter().cloned().fold(f64::MIN, f64::max),
+                    avg: vals.iter().sum::<f64>() / vals.len() as f64,
+                    unit: "W".into(),
+                });
+            }
         }
 
-        report.sections.push(crate::reporting::report::GpuReportSection {
-            gpu_id: gpu_id.clone(),
-            gpu_name,
-            sampling_duration_secs: duration_secs,
-            sample_count: samples.len(),
-            metrics,
-        });
+        report
+            .sections
+            .push(crate::reporting::report::GpuReportSection {
+                gpu_id: gpu_id.clone(),
+                gpu_name,
+                sampling_duration_secs: duration_secs,
+                sample_count: samples.len(),
+                metrics,
+            });
     }
 
     let now = Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
@@ -166,7 +199,9 @@ pub async fn list_reports() -> Vec<ReportSummary> {
 #[tauri::command]
 pub async fn get_report(id: String) -> Result<Report, String> {
     let store = ReportStore::new();
-    store.load_report(&id).ok_or_else(|| format!("Report {id} not found"))
+    store
+        .load_report(&id)
+        .ok_or_else(|| format!("Report {id} not found"))
 }
 
 #[tauri::command]
@@ -179,7 +214,9 @@ pub async fn delete_report(id: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn export_report_csv(id: String) -> Result<String, String> {
     let store = ReportStore::new();
-    let report = store.load_report(&id).ok_or_else(|| format!("Report {id} not found"))?;
+    let report = store
+        .load_report(&id)
+        .ok_or_else(|| format!("Report {id} not found"))?;
 
     let mut csv = String::from("gpu_id,metric,current,min,max,avg,unit\n");
     for section in &report.sections {

@@ -44,23 +44,24 @@ fn test_sample_insert_and_query() {
     let sample = GpuSample {
         gpu_id: "test-gpu-0".into(),
         timestamp: 1000,
-        temperature_celsius: 65.0,
-        core_clock_mhz: 1500.0,
-        memory_clock_mhz: 2000.0,
-        memory_used_mb: 2048,
-        memory_total_mb: 8192,
-        fan_speed_percent: 45.0,
-        fan_rpm: 1500,
-        power_watts: 120.0,
-        core_voltage_mv: 950.0,
-        core_utilization_percent: 50.0,
-        memory_utilization_percent: 30.0,
+        temperature_celsius: Some(65.0),
+        core_clock_mhz: Some(1500.0),
+        memory_clock_mhz: Some(2000.0),
+        memory_used_mb: Some(2048),
+        memory_total_mb: Some(8192),
+        fan_speed_percent: Some(45.0),
+        fan_rpm: Some(1500),
+        power_watts: Some(120.0),
+        max_power_limit_watts: None,
+        core_voltage_mv: Some(950.0),
+        core_utilization_percent: Some(50.0),
+        memory_utilization_percent: Some(30.0),
     };
 
     db.insert_sample(&sample).unwrap();
     let samples = db.get_samples("test-gpu-0", 10, 0).unwrap();
     assert!(!samples.is_empty());
-    assert_eq!(samples[0].temperature_celsius, 65.0);
+    assert_eq!(samples[0].temperature_celsius, Some(65.0));
 }
 
 #[test]
@@ -86,21 +87,21 @@ fn test_clear_samples() {
     let sample = GpuSample {
         gpu_id: "test-gpu-clear".into(),
         timestamp: 999,
-        temperature_celsius: 50.0,
-        core_clock_mhz: 1000.0,
-        memory_clock_mhz: 1500.0,
-        memory_used_mb: 1024,
-        memory_total_mb: 4096,
-        fan_speed_percent: 30.0,
-        fan_rpm: 1200,
-        power_watts: 80.0,
-        core_voltage_mv: 800.0,
-        core_utilization_percent: 20.0,
-        memory_utilization_percent: 10.0,
+        temperature_celsius: Some(50.0),
+        core_clock_mhz: Some(1000.0),
+        memory_clock_mhz: Some(1500.0),
+        memory_used_mb: Some(1024),
+        memory_total_mb: Some(4096),
+        fan_speed_percent: Some(30.0),
+        fan_rpm: Some(1200),
+        power_watts: Some(80.0),
+        max_power_limit_watts: None,
+        core_voltage_mv: Some(800.0),
+        core_utilization_percent: Some(20.0),
+        memory_utilization_percent: Some(10.0),
     };
     db.insert_sample(&sample).unwrap();
 
     let deleted = db.clear_samples(1000).unwrap();
     assert!(deleted > 0);
 }
-

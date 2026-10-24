@@ -28,9 +28,9 @@ export interface MetricBaseline {
 export interface ContextInfo {
   context: 'Idle' | 'Normal' | 'Gaming' | 'Benchmarking' | 'Unknown';
   confidence: number;
-  avg_utilization: number;
-  avg_temperature: number;
-  avg_power: number;
+  avg_utilization: number | null;
+  avg_temperature: number | null;
+  avg_power: number | null;
   duration_secs: number;
 }
 

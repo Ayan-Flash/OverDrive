@@ -94,7 +94,7 @@ impl OverlayController {
                         "memory_utilization_percent" => sample.memory_utilization_percent,
                         _ => continue,
                     };
-                    data.push((gpu.name.clone(), metric.label.clone(), value));
+                    if let Some(value) = value { data.push((gpu.name.clone(), metric.label.clone(), value)); }
                 }
             }
         }

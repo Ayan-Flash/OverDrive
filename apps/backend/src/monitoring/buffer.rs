@@ -87,19 +87,18 @@ mod tests {
         GpuSample {
             gpu_id: gpu_id.to_string(),
             timestamp: 0,
-            temperature_celsius: temp,
-            core_clock_mhz: 0.0,
-            memory_clock_mhz: 0.0,
-            memory_used_mb: 0,
-            memory_total_mb: 0,
-            fan_speed_percent: 0.0,
-            fan_rpm: 0,
-            power_watts: 0.0,
+            temperature_celsius: Some(temp),
+            core_clock_mhz: Some(0.0),
+            memory_clock_mhz: Some(0.0),
+            memory_used_mb: Some(0),
+            memory_total_mb: Some(0),
+            fan_speed_percent: Some(0.0),
+            fan_rpm: Some(0),
+            power_watts: Some(0.0),
             max_power_limit_watts: None,
-            core_voltage_mv: 0.0,
-            core_utilization_percent: 0.0,
-            core_utilization_available: true,
-            memory_utilization_percent: 0.0,
+            core_voltage_mv: Some(0.0),
+            core_utilization_percent: Some(0.0),
+            memory_utilization_percent: Some(0.0),
         }
     }
 
@@ -110,11 +109,11 @@ mod tests {
 
         buf.push(make_sample("gpu-0", 45.0));
         assert_eq!(buf.len(), 1);
-        assert_eq!(buf.get_latest().unwrap().temperature_celsius, 45.0);
+        assert_eq!(buf.get_latest().unwrap().temperature_celsius, Some(45.0));
 
         buf.push(make_sample("gpu-0", 50.0));
         assert_eq!(buf.len(), 2);
-        assert_eq!(buf.get_latest().unwrap().temperature_celsius, 50.0);
+        assert_eq!(buf.get_latest().unwrap().temperature_celsius, Some(50.0));
     }
 
     #[test]
@@ -127,9 +126,9 @@ mod tests {
 
         assert_eq!(buf.len(), 3);
         let range = buf.get_range(3);
-        assert_eq!(range[0].temperature_celsius, 2.0);
-        assert_eq!(range[1].temperature_celsius, 3.0);
-        assert_eq!(range[2].temperature_celsius, 4.0);
+        assert_eq!(range[0].temperature_celsius, Some(2.0));
+        assert_eq!(range[1].temperature_celsius, Some(3.0));
+        assert_eq!(range[2].temperature_celsius, Some(4.0));
     }
 
     #[test]
@@ -141,8 +140,8 @@ mod tests {
 
         let range = buf.get_range(3);
         assert_eq!(range.len(), 3);
-        assert_eq!(range[0].temperature_celsius, 7.0);
-        assert_eq!(range[1].temperature_celsius, 8.0);
-        assert_eq!(range[2].temperature_celsius, 9.0);
+        assert_eq!(range[0].temperature_celsius, Some(7.0));
+        assert_eq!(range[1].temperature_celsius, Some(8.0));
+        assert_eq!(range[2].temperature_celsius, Some(9.0));
     }
 }

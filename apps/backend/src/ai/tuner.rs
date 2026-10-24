@@ -58,8 +58,8 @@ pub struct FanCurveTuner;
 
 impl FanCurveTuner {
     pub fn tune(samples: &[GpuSample]) -> FanCurveResult {
-        let temps: Vec<f64> = samples.iter().map(|s| s.temperature_celsius).collect();
-        let fans: Vec<f64> = samples.iter().map(|s| s.fan_speed_percent).collect();
+        let temps: Vec<f64> = samples.iter().filter_map(|s| s.temperature_celsius).collect();
+        let fans: Vec<f64> = samples.iter().filter_map(|s| s.fan_speed_percent).collect();
 
         if temps.is_empty() {
             return Self::default_curve();
@@ -138,9 +138,9 @@ pub struct ClockTuner;
 
 impl ClockTuner {
     pub fn tune(samples: &[GpuSample]) -> ClockTuneResult {
-        let temps: Vec<f64> = samples.iter().map(|s| s.temperature_celsius).collect();
-        let utils: Vec<f64> = samples.iter().map(|s| s.core_utilization_percent).collect();
-        let clocks: Vec<f64> = samples.iter().map(|s| s.core_clock_mhz).collect();
+        let temps: Vec<f64> = samples.iter().filter_map(|s| s.temperature_celsius).collect();
+        let utils: Vec<f64> = samples.iter().filter_map(|s| s.core_utilization_percent).collect();
+        let clocks: Vec<f64> = samples.iter().filter_map(|s| s.core_clock_mhz).collect();
 
         if clocks.is_empty() {
             return ClockTuneResult {
@@ -187,9 +187,9 @@ pub struct PowerTuner;
 
 impl PowerTuner {
     pub fn tune(samples: &[GpuSample], max_power_watts: f64) -> PowerTuneResult {
-        let temps: Vec<f64> = samples.iter().map(|s| s.temperature_celsius).collect();
-        let powers: Vec<f64> = samples.iter().map(|s| s.power_watts).collect();
-        let utils: Vec<f64> = samples.iter().map(|s| s.core_utilization_percent).collect();
+        let temps: Vec<f64> = samples.iter().filter_map(|s| s.temperature_celsius).collect();
+        let powers: Vec<f64> = samples.iter().filter_map(|s| s.power_watts).collect();
+        let utils: Vec<f64> = samples.iter().filter_map(|s| s.core_utilization_percent).collect();
 
         if powers.is_empty() || max_power_watts <= 0.0 {
             return PowerTuneResult {

@@ -438,11 +438,11 @@ export function AiPage() {
                 </div>
                 <div style={{background: 'var(--ac-bg-input)', borderRadius: 8, padding: '8px 12px'}}>
                   <p style={{color: 'var(--ac-text-secondary)', fontSize: 12}}>Avg Utilization</p>
-                  <p style={{color: 'var(--ac-text-primary)', fontSize: 13, fontWeight: 500}}>{smartAlertStore.context?.avg_utilization.toFixed(0) ?? '-'}%</p>
+                  <p style={{color: 'var(--ac-text-primary)', fontSize: 13, fontWeight: 500}}>{smartAlertStore.context?.avg_utilization?.toFixed(0) ?? '-'}%</p>
                 </div>
                 <div style={{background: 'var(--ac-bg-input)', borderRadius: 8, padding: '8px 12px'}}>
                   <p style={{color: 'var(--ac-text-secondary)', fontSize: 12}}>Avg Temperature</p>
-                  <p style={{color: 'var(--ac-text-primary)', fontSize: 13, fontWeight: 500}}>{smartAlertStore.context?.avg_temperature.toFixed(0) ?? '-'}°C</p>
+                  <p style={{color: 'var(--ac-text-primary)', fontSize: 13, fontWeight: 500}}>{smartAlertStore.context?.avg_temperature?.toFixed(0) ?? '-'}°C</p>
                 </div>
                 <div style={{background: 'var(--ac-bg-input)', borderRadius: 8, padding: '8px 12px'}}>
                   <p style={{color: 'var(--ac-text-secondary)', fontSize: 12}}>Suppressed Alerts</p>

@@ -5,25 +5,24 @@ export interface GPUInfo {
   name: string;
   vendor: string;
   index: number;
-  memory_total_mb?: number;
+  memory_total_mb?: number | null;
 }
 
 export interface GPUData {
   gpu_id: string;
   timestamp: number;
-  temperature_celsius: number;
-  core_clock_mhz: number;
-  memory_clock_mhz: number;
-  memory_used_mb: number;
-  memory_total_mb: number;
-  fan_speed_percent: number;
-  fan_rpm: number;
-  power_watts: number;
+  temperature_celsius: number | null;
+  core_clock_mhz: number | null;
+  memory_clock_mhz: number | null;
+  memory_used_mb: number | null;
+  memory_total_mb: number | null;
+  fan_speed_percent: number | null;
+  fan_rpm: number | null;
+  power_watts: number | null;
   max_power_limit_watts?: number | null;
-  core_voltage_mv: number;
-  core_utilization_percent: number;
-  core_utilization_available?: boolean;
-  memory_utilization_percent: number;
+  core_voltage_mv: number | null;
+  core_utilization_percent: number | null;
+  memory_utilization_percent: number | null;
 }
 
 export interface GpuDataResponse {
@@ -38,15 +37,15 @@ export interface GpuHistoryResponse {
 
 export interface ExportedSample {
   t: number;
-  temp: number;
-  core: number;
-  mem: number;
-  fan: number;
-  power: number;
-  core_util: number;
-  mem_util: number;
-  mem_used_mb: number;
-  mem_total_mb: number;
+  temp: number | null;
+  core: number | null;
+  mem: number | null;
+  fan: number | null;
+  power: number | null;
+  core_util: number | null;
+  mem_util: number | null;
+  mem_used_mb: number | null;
+  mem_total_mb: number | null;
 }
 
 export interface AggregatedMetrics {
@@ -61,10 +60,10 @@ export interface AggregatedMetrics {
 }
 
 export interface MetricStats {
-  current: number;
-  min: number;
-  max: number;
-  avg: number;
+  current: number | null;
+  min: number | null;
+  max: number | null;
+  avg: number | null;
 }
 
 export interface GpuControlState {

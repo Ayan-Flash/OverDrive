@@ -15,17 +15,17 @@ pub fn initialize(conn: &Connection) -> Result<(), rusqlite::Error> {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             gpu_id TEXT NOT NULL,
             timestamp INTEGER NOT NULL,
-            temperature_celsius REAL NOT NULL,
-            core_clock_mhz REAL NOT NULL,
-            memory_clock_mhz REAL NOT NULL,
-            memory_used_mb INTEGER NOT NULL,
-            memory_total_mb INTEGER NOT NULL,
-            fan_speed_percent REAL NOT NULL,
-            fan_rpm INTEGER NOT NULL,
-            power_watts REAL NOT NULL,
-            core_voltage_mv REAL NOT NULL,
-            core_utilization_percent REAL NOT NULL,
-            memory_utilization_percent REAL NOT NULL
+            temperature_celsius REAL,
+            core_clock_mhz REAL,
+            memory_clock_mhz REAL,
+            memory_used_mb INTEGER,
+            memory_total_mb INTEGER,
+            fan_speed_percent REAL,
+            fan_rpm INTEGER,
+            power_watts REAL,
+            core_voltage_mv REAL,
+            core_utilization_percent REAL,
+            memory_utilization_percent REAL
         );
 
         CREATE INDEX IF NOT EXISTS idx_samples_gpu_time
@@ -102,6 +102,26 @@ pub fn initialize(conn: &Connection) -> Result<(), rusqlite::Error> {
 
     if version < 1 {
         conn.execute("INSERT INTO schema_version (version) VALUES (1)", [])?;
+    }
+
+    // Rebuild the legacy samples table once so unsupported GPU sensors can be stored as SQL NULL.
+    if version < 2 {
+        conn.execute_batch("BEGIN IMMEDIATE;
+            DROP INDEX IF EXISTS idx_samples_gpu_time;
+            CREATE TABLE samples_nullable (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, gpu_id TEXT NOT NULL, timestamp INTEGER NOT NULL,
+                temperature_celsius REAL, core_clock_mhz REAL, memory_clock_mhz REAL,
+                memory_used_mb INTEGER, memory_total_mb INTEGER, fan_speed_percent REAL, fan_rpm INTEGER,
+                power_watts REAL, core_voltage_mv REAL, core_utilization_percent REAL, memory_utilization_percent REAL
+            );
+            INSERT INTO samples_nullable SELECT id,gpu_id,timestamp,temperature_celsius,core_clock_mhz,
+                memory_clock_mhz,memory_used_mb,memory_total_mb,fan_speed_percent,fan_rpm,power_watts,
+                core_voltage_mv,core_utilization_percent,memory_utilization_percent FROM samples;
+            DROP TABLE samples;
+            ALTER TABLE samples_nullable RENAME TO samples;
+            CREATE INDEX idx_samples_gpu_time ON samples(gpu_id, timestamp DESC);
+            INSERT INTO schema_version (version) VALUES (2);
+            COMMIT;")?;
     }
 
     Ok(())

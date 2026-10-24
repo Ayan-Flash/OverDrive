@@ -172,6 +172,8 @@ pub fn run() {
             get_app_info,
             commands::get_cpu_info,
             commands::get_cpu_sample,
+            commands::get_ram_telemetry,
+            commands::get_storage_telemetry,
             commands::list_gpus,
             commands::get_gpu_data,
             commands::get_gpu_history,

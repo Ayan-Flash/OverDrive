@@ -51,11 +51,11 @@ pub fn run_ai_analysis(
             continue;
         }
 
-        let temps: Vec<f64> = samples.iter().map(|s| s.temperature_celsius).collect();
-        let fans: Vec<f64> = samples.iter().map(|s| s.fan_speed_percent).collect();
-        let powers: Vec<f64> = samples.iter().map(|s| s.power_watts).collect();
-        let utils: Vec<f64> = samples.iter().map(|s| s.core_utilization_percent).collect();
-        let clocks: Vec<f64> = samples.iter().map(|s| s.core_clock_mhz).collect();
+        let temps: Vec<f64> = samples.iter().filter_map(|s| s.temperature_celsius).collect();
+        let fans: Vec<f64> = samples.iter().filter_map(|s| s.fan_speed_percent).collect();
+        let powers: Vec<f64> = samples.iter().filter_map(|s| s.power_watts).collect();
+        let utils: Vec<f64> = samples.iter().filter_map(|s| s.core_utilization_percent).collect();
+        let clocks: Vec<f64> = samples.iter().filter_map(|s| s.core_clock_mhz).collect();
 
         for mut a in detector.detect_temperature_spike(&temps) {
             a.gpu_id = gpu.id.clone();
@@ -113,7 +113,7 @@ pub fn predict_gpu_temperature(
     if samples.is_empty() {
         return Err("No data for GPU".into());
     }
-    let temps: Vec<f64> = samples.iter().map(|s| s.temperature_celsius).collect();
+    let temps: Vec<f64> = samples.iter().filter_map(|s| s.temperature_celsius).collect();
     Ok(Predictor::predict_temperature(&temps, 90.0))
 }
 
@@ -126,7 +126,7 @@ pub fn predict_gpu_utilization(
     if samples.is_empty() {
         return Err("No data for GPU".into());
     }
-    let utils: Vec<f64> = samples.iter().map(|s| s.core_utilization_percent).collect();
+    let utils: Vec<f64> = samples.iter().filter_map(|s| s.core_utilization_percent).collect();
     Ok(Predictor::predict_utilization(&utils))
 }
 

@@ -61,7 +61,6 @@ impl Database {
                     max_power_limit_watts: None,
                     core_voltage_mv: row.get(10)?,
                     core_utilization_percent: row.get(11)?,
-                    core_utilization_available: true,
                     memory_utilization_percent: row.get(12)?,
                 })
             })?
@@ -182,7 +181,10 @@ impl Database {
         let deleted = if gpu_id.is_empty() {
             conn.execute("DELETE FROM alert_events", [])?
         } else {
-            conn.execute("DELETE FROM alert_events WHERE gpu_id = ?1", params![gpu_id])?
+            conn.execute(
+                "DELETE FROM alert_events WHERE gpu_id = ?1",
+                params![gpu_id],
+            )?
         };
         Ok(deleted as u64)
     }
@@ -194,5 +196,35 @@ impl Database {
             params![before_timestamp],
         )?;
         Ok(deleted as u64)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn nullable_gpu_sensors_persist_as_null() {
+        let db = Database::in_memory().unwrap();
+        let sample = GpuSample {
+            gpu_id: "nullable-gpu".into(),
+            timestamp: 1,
+            temperature_celsius: Some(0.0),
+            core_clock_mhz: None,
+            memory_clock_mhz: None,
+            memory_used_mb: None,
+            memory_total_mb: None,
+            fan_speed_percent: None,
+            fan_rpm: None,
+            power_watts: None,
+            max_power_limit_watts: None,
+            core_voltage_mv: None,
+            core_utilization_percent: Some(0.0),
+            memory_utilization_percent: None,
+        };
+        db.insert_sample(&sample).unwrap();
+        let restored = db.get_samples("nullable-gpu", 1, 0).unwrap().remove(0);
+        assert_eq!(restored.temperature_celsius, Some(0.0));
+        assert_eq!(restored.core_clock_mhz, None);
+        assert_eq!(restored.power_watts, None);
     }
 }

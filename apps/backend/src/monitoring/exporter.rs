@@ -5,15 +5,15 @@ use crate::hardware::GpuSample;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportedSample {
     pub t: i64,
-    pub temp: f64,
-    pub core: f64,
-    pub mem: f64,
-    pub fan: f64,
-    pub power: f64,
-    pub core_util: f64,
-    pub mem_util: f64,
-    pub mem_used_mb: u64,
-    pub mem_total_mb: u64,
+    pub temp: Option<f64>,
+    pub core: Option<f64>,
+    pub mem: Option<f64>,
+    pub fan: Option<f64>,
+    pub power: Option<f64>,
+    pub core_util: Option<f64>,
+    pub mem_util: Option<f64>,
+    pub mem_used_mb: Option<u64>,
+    pub mem_total_mb: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,13 +30,13 @@ impl Exporter {
             .iter()
             .map(|s| ExportedSample {
                 t: s.timestamp,
-                temp: (s.temperature_celsius * 10.0).round() / 10.0,
-                core: s.core_clock_mhz.round(),
-                mem: s.memory_clock_mhz.round(),
-                fan: (s.fan_speed_percent * 10.0).round() / 10.0,
-                power: (s.power_watts * 10.0).round() / 10.0,
-                core_util: (s.core_utilization_percent * 10.0).round() / 10.0,
-                mem_util: (s.memory_utilization_percent * 10.0).round() / 10.0,
+                temp: s.temperature_celsius.map(|v| (v * 10.0).round() / 10.0),
+                core: s.core_clock_mhz.map(f64::round),
+                mem: s.memory_clock_mhz.map(f64::round),
+                fan: s.fan_speed_percent.map(|v| (v * 10.0).round() / 10.0),
+                power: s.power_watts.map(|v| (v * 10.0).round() / 10.0),
+                core_util: s.core_utilization_percent.map(|v| (v * 10.0).round() / 10.0),
+                mem_util: s.memory_utilization_percent.map(|v| (v * 10.0).round() / 10.0),
                 mem_used_mb: s.memory_used_mb,
                 mem_total_mb: s.memory_total_mb,
             })
@@ -49,15 +49,15 @@ impl Exporter {
             csv.push_str(&format!(
                 "{},{},{},{},{},{},{},{},{},{}\n",
                 s.timestamp,
-                (s.temperature_celsius * 10.0).round() / 10.0,
-                s.core_clock_mhz.round(),
-                s.memory_clock_mhz.round(),
-                (s.fan_speed_percent * 10.0).round() / 10.0,
-                (s.power_watts * 10.0).round() / 10.0,
-                (s.core_utilization_percent * 10.0).round() / 10.0,
-                (s.memory_utilization_percent * 10.0).round() / 10.0,
-                s.memory_used_mb,
-                s.memory_total_mb,
+                s.temperature_celsius.map(|v| ((v * 10.0).round() / 10.0).to_string()).unwrap_or_default(),
+                s.core_clock_mhz.map(|v| v.round().to_string()).unwrap_or_default(),
+                s.memory_clock_mhz.map(|v| v.round().to_string()).unwrap_or_default(),
+                s.fan_speed_percent.map(|v| ((v * 10.0).round() / 10.0).to_string()).unwrap_or_default(),
+                s.power_watts.map(|v| ((v * 10.0).round() / 10.0).to_string()).unwrap_or_default(),
+                s.core_utilization_percent.map(|v| ((v * 10.0).round() / 10.0).to_string()).unwrap_or_default(),
+                s.memory_utilization_percent.map(|v| ((v * 10.0).round() / 10.0).to_string()).unwrap_or_default(),
+                s.memory_used_mb.map(|v| v.to_string()).unwrap_or_default(),
+                s.memory_total_mb.map(|v| v.to_string()).unwrap_or_default(),
             ));
         }
         csv

@@ -41,7 +41,7 @@ impl SimulatedGpuProvider {
                     name: "NVIDIA GeForce RTX 4090 (Simulated)".into(),
                     vendor: GpuVendor::Nvidia,
                     index: 0,
-                    memory_total_mb: 24576,
+                    memory_total_mb: Some(24576),
                 },
                 base_temp: 45.0,
                 base_core_clock: 2235.0,
@@ -65,7 +65,7 @@ impl SimulatedGpuProvider {
                     name: "AMD Radeon RX 7900 XTX (Simulated)".into(),
                     vendor: GpuVendor::Amd,
                     index: 1,
-                    memory_total_mb: 24576,
+                    memory_total_mb: Some(24576),
                 },
                 base_temp: 42.0,
                 base_core_clock: 2500.0,
@@ -101,29 +101,29 @@ impl SimulatedGpuProvider {
         let temp_offset = (state.core_util / 100.0) * 35.0 + rng.gen_range(-1.0..1.0);
         let load_factor = state.core_util / 100.0;
 
-        state.mem_used = (((state.identity.memory_total_mb as f64)
+        let mem_total = state.identity.memory_total_mb.unwrap_or(0);
+        state.mem_used = (((mem_total as f64)
             * ((state.mem_util / 100.0) + rng.gen_range(-0.02..0.02)))
             as u64)
-            .clamp(0, state.identity.memory_total_mb);
+            .clamp(0, mem_total);
 
         let clock_boost_mhz = (state.core_offset as f64) + (load_factor * 150.0) + rng.gen_range(-10.0..10.0);
 
         GpuSample {
             gpu_id: state.identity.id.clone(),
             timestamp: chrono::Utc::now().timestamp_millis(),
-            temperature_celsius: state.base_temp + temp_offset,
-            core_clock_mhz: state.base_core_clock + clock_boost_mhz,
-            memory_clock_mhz: state.base_memory_clock + state.mem_offset as f64 + rng.gen_range(-5.0..5.0),
-            memory_used_mb: state.mem_used,
+            temperature_celsius: Some(state.base_temp + temp_offset),
+            core_clock_mhz: Some(state.base_core_clock + clock_boost_mhz),
+            memory_clock_mhz: Some(state.base_memory_clock + state.mem_offset as f64 + rng.gen_range(-5.0..5.0)),
+            memory_used_mb: Some(state.mem_used),
             memory_total_mb: state.identity.memory_total_mb,
-            fan_speed_percent: state.fan_speed + (load_factor * 15.0) + rng.gen_range(-1.0..1.0),
-            fan_rpm: (state.fan_rpm as f64 * (state.fan_speed / 30.0)) as u32 + rng.gen_range(0..50),
-            power_watts: state.base_power * (0.3 + load_factor * 0.7) + rng.gen_range(-2.0..2.0),
+            fan_speed_percent: Some(state.fan_speed + (load_factor * 15.0) + rng.gen_range(-1.0..1.0)),
+            fan_rpm: Some((state.fan_rpm as f64 * (state.fan_speed / 30.0)) as u32 + rng.gen_range(0..50)),
+            power_watts: Some(state.base_power * (0.3 + load_factor * 0.7) + rng.gen_range(-2.0..2.0)),
             max_power_limit_watts: None,
-            core_voltage_mv: state.base_voltage + state.voltage_offset as f64 + rng.gen_range(-5.0..5.0),
-            core_utilization_percent: state.core_util,
-            core_utilization_available: true,
-            memory_utilization_percent: state.mem_util,
+            core_voltage_mv: Some(state.base_voltage + state.voltage_offset as f64 + rng.gen_range(-5.0..5.0)),
+            core_utilization_percent: Some(state.core_util),
+            memory_utilization_percent: Some(state.mem_util),
         }
     }
 }

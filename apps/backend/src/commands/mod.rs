@@ -1,6 +1,7 @@
 pub mod state;
 pub mod gpu_commands;
 pub mod cpu_commands;
+pub mod system_commands;
 pub mod control_commands;
 pub mod alert_commands;
 pub mod monitoring_commands;
@@ -19,6 +20,7 @@ pub mod marketplace_commands;
 
 pub use gpu_commands::*;
 pub use cpu_commands::*;
+pub use system_commands::*;
 pub use control_commands::*;
 pub use alert_commands::*;
 pub use monitoring_commands::*;

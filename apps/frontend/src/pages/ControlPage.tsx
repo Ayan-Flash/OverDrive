@@ -71,10 +71,10 @@ export function ControlPage() {
           <div className="ac-page-card__body">
             <div className="ac-grid-4">
               {[
-                { label: 'Core Clock', value: formatClockSpeed(data.core_clock_mhz), color: '#60a5fa' },
-                { label: 'Memory Clock', value: formatClockSpeed(data.memory_clock_mhz), color: '#22d3ee' },
-                { label: 'Temperature', value: `${data.temperature_celsius.toFixed(1)}°C`, color: data.temperature_celsius > 80 ? '#f55' : '#fbbf24' },
-                { label: 'Voltage', value: data.core_voltage_mv > 0 ? `${data.core_voltage_mv.toFixed(0)} mV` : 'N/A', color: '#c084fc' },
+                { label: 'Core Clock', value: data.core_clock_mhz == null ? 'Unavailable' : formatClockSpeed(data.core_clock_mhz), color: '#60a5fa' },
+                { label: 'Memory Clock', value: data.memory_clock_mhz == null ? 'Unavailable' : formatClockSpeed(data.memory_clock_mhz), color: '#22d3ee' },
+                { label: 'Temperature', value: data.temperature_celsius == null ? 'Unavailable' : `${data.temperature_celsius.toFixed(1)}°C`, color: data.temperature_celsius != null && data.temperature_celsius > 80 ? '#f55' : '#fbbf24' },
+                { label: 'Voltage', value: data.core_voltage_mv == null ? 'Unavailable' : `${data.core_voltage_mv.toFixed(0)} mV`, color: '#c084fc' },
               ].map((s) => (
                 <div key={s.label} style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 10, color: 'var(--ac-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4, fontWeight: 500 }}>{s.label}</div>
@@ -86,7 +86,7 @@ export function ControlPage() {
         </div>
       )}
 
-      {selectedGpuId && data && (
+      {selectedGpuId && data?.fan_speed_percent != null && (
         <FanControl gpuId={selectedGpuId} currentSpeed={data.fan_speed_percent} />
       )}
 

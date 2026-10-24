@@ -89,7 +89,7 @@ impl NvidiaProvider {
                 name,
                 vendor: GpuVendor::Nvidia,
                 index: i,
-                memory_total_mb: Self::get_memory_info(&lib, handle).unwrap_or(0) / (1024 * 1024),
+                memory_total_mb: Self::get_memory_info(&lib, handle).map(|bytes| bytes / (1024 * 1024)),
             };
 
             info!(name = %identity.name, index = i, "Found NVIDIA GPU");
@@ -247,37 +247,33 @@ impl GpuProvider for NvidiaProvider {
             GpuProviderError::NotAvailable("NVML library not loaded".into())
         })?;
 
-        let temp = self.read_temp(lib_ref, *device).unwrap_or(0.0);
+        let temp = self.read_temp(lib_ref, *device);
         let (core_clock, mem_clock) = self.read_clocks(lib_ref, *device);
-        let power = self.read_power(lib_ref, *device).unwrap_or(0.0);
-        let fan = self.read_fan_speed(lib_ref, *device).unwrap_or(0.0);
+        let power = self.read_power(lib_ref, *device);
+        let fan = self.read_fan_speed(lib_ref, *device);
         let (gpu_util, mem_util) = self.read_utilization(lib_ref, *device);
         // Real used VRAM from NVML (bytes → MB). Falls back to the cached total
         // if the query fails, so `memory_used_mb` is never a bogus 0.
-        let (mem_total, mem_used) = Self::read_memory(lib_ref, *device)
-            .map(|(t, u)| (t / (1024 * 1024), u / (1024 * 1024)))
-            .unwrap_or((identity.memory_total_mb, 0));
+        let memory = Self::read_memory(lib_ref, *device);
 
         Ok(GpuSample {
             gpu_id: identity.id.clone(),
             timestamp: chrono::Utc::now().timestamp_millis(),
             temperature_celsius: temp,
-            core_clock_mhz: core_clock.unwrap_or(0.0),
-            memory_clock_mhz: mem_clock.unwrap_or(0.0),
-            memory_used_mb: mem_used,
-            memory_total_mb: if mem_total > 0 { mem_total } else { identity.memory_total_mb },
+            core_clock_mhz: core_clock,
+            memory_clock_mhz: mem_clock,
+            memory_used_mb: memory.map(|(_, used)| used / (1024 * 1024)),
+            memory_total_mb: memory.map(|(total, _)| total / (1024 * 1024)).or(identity.memory_total_mb),
             fan_speed_percent: fan,
             // NVML exposes fan duty percent on many consumer cards, but not
             // physical RPM. Keep RPM unavailable instead of fabricating it.
-            fan_rpm: 0,
+            fan_rpm: None,
             power_watts: power,
             max_power_limit_watts: self.read_max_power_limit(lib_ref, *device),
-            // NVML does not expose real per-core voltage on consumer GPUs, so we
-            // report 0.0 here; the UI renders "N/A" rather than a fabricated value.
-            core_voltage_mv: 0.0,
-            core_utilization_percent: gpu_util.unwrap_or(0.0),
-            core_utilization_available: gpu_util.is_some(),
-            memory_utilization_percent: mem_util.unwrap_or(0.0),
+            // Unsupported readings remain absent; successful zero values remain Some(0).
+            core_voltage_mv: None,
+            core_utilization_percent: gpu_util,
+            memory_utilization_percent: mem_util,
         })
     }
 

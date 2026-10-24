@@ -32,6 +32,13 @@ vi.mock('../services', () => ({
   overlayService: { getDetectedGames: vi.fn(() => new Promise(() => {})) },
 }));
 
+vi.mock('../services/cpuService', () => ({
+  systemTelemetryService: {
+    getRam: () => new Promise(() => {}),
+    getStorage: () => new Promise(() => {}),
+  },
+}));
+
 describe('Dashboard overview', () => {
   beforeEach(() => {
     useGpuStore.setState({
@@ -56,6 +63,23 @@ describe('Dashboard overview', () => {
     expect(screen.getByText('System memory telemetry isn’t available.')).toBeInTheDocument();
     expect(screen.getByText('Storage telemetry isn’t available.')).toBeInTheDocument();
     expect(screen.getAllByRole('img', { name: 'Temperature: unavailable' })).toHaveLength(2);
+  });
+
+  it('renders numeric zero as a reading and null GPU values as unavailable', () => {
+    useGpuStore.setState({
+      gpus: [{ id: 'gpu-0', name: 'Test GPU', vendor: 'nvidia', index: 0 }],
+      currentData: new Map([['gpu-0', {
+        gpu_id: 'gpu-0', timestamp: 0, temperature_celsius: 0, core_clock_mhz: null,
+        memory_clock_mhz: null, memory_used_mb: null, memory_total_mb: null,
+        fan_speed_percent: null, fan_rpm: null, power_watts: 0, max_power_limit_watts: null,
+        core_voltage_mv: null, core_utilization_percent: 0, memory_utilization_percent: null,
+      }]]),
+    });
+    useUiStore.setState({ selectedGpuId: 'gpu-0' });
+    render(<DashboardPage />);
+    expect(screen.getByText('0 W')).toBeInTheDocument();
+    expect(screen.getByText('0%')).toBeInTheDocument();
+    expect(screen.getByText('Core clock').parentElement?.querySelector('strong')).toHaveTextContent('Unavailable');
   });
 
   it('routes the header shortcuts to existing settings and hardware control pages', () => {

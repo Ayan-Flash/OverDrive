@@ -4,6 +4,7 @@ import { alertService, monitoringService, overlayService } from '../services';
 import { useAlertStore, useGpuStore, useUiStore } from '../stores';
 import { useCpuData } from '../components/armoury/useCpuData';
 import { SegmentGauge } from '../components/armoury/SegmentGauge';
+import { systemTelemetryService, type RamTelemetry, type StorageTelemetry } from '../services/cpuService';
 
 type MonitoringState = 'checking' | 'running' | 'stopped' | 'unavailable';
 
@@ -122,6 +123,18 @@ export function DashboardPage() {
   const [games, setGames] = useState<string[]>([]);
   const [gamesLoaded, setGamesLoaded] = useState(false);
   const [gamesAvailable, setGamesAvailable] = useState(true);
+  const [ram, setRam] = useState<RamTelemetry | null>(null);
+  const [storage, setStorage] = useState<StorageTelemetry[] | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const readRam = () => void systemTelemetryService.getRam().then((v) => active && setRam(v)).catch(() => active && setRam(null));
+    const readStorage = () => void systemTelemetryService.getStorage().then((v) => active && setStorage(v)).catch(() => active && setStorage(null));
+    readRam(); readStorage();
+    const ramTimer = setInterval(readRam, 5000);
+    const storageTimer = setInterval(readStorage, 60000);
+    return () => { active = false; clearInterval(ramTimer); clearInterval(storageTimer); };
+  }, []);
 
   useEffect(() => {
     if (!selectedGpuId) return;
@@ -182,13 +195,13 @@ export function DashboardPage() {
   const selectedGpu = gpus.find((item) => item.id === selectedGpuId);
   const cpuTemperature = cpuHasData && Number.isFinite(cpu.temperature) ? cpu.temperature : null;
   const gpuTemperature =
-    gpu && Number.isFinite(gpu.temperature_celsius) ? gpu.temperature_celsius : null;
+    gpu?.temperature_celsius != null && Number.isFinite(gpu.temperature_celsius) ? gpu.temperature_celsius : null;
   const gpuUtilization =
-    gpu && gpu.core_utilization_available !== false && Number.isFinite(gpu.core_utilization_percent)
+    gpu?.core_utilization_percent != null && Number.isFinite(gpu.core_utilization_percent)
       ? gpu.core_utilization_percent
       : null;
   const gpuVram =
-    gpu &&
+    gpu && gpu.memory_used_mb != null && gpu.memory_total_mb != null &&
     Number.isFinite(gpu.memory_used_mb) &&
     Number.isFinite(gpu.memory_total_mb) &&
     gpu.memory_total_mb > 0
@@ -393,7 +406,7 @@ export function DashboardPage() {
                 )}
               </article>
 
-              <article className="overview-hardware-card overview-hardware-card--unavailable">
+              <article className="overview-hardware-card">
                 <div className="overview-hardware-card__top">
                   <HardwareIcon kind="ram" />
                   <div className="overview-hardware-card__identity">
@@ -401,13 +414,15 @@ export function DashboardPage() {
                     <p>System RAM</p>
                   </div>
                 </div>
-                <div className="overview-unavailable-state">
-                  <span>System memory telemetry isn’t available.</span>
-                  <small>This app does not currently provide RAM capacity or usage readings.</small>
-                </div>
+                {ram ? <div className="overview-hardware-card__metrics">
+                  <Metric label="Used" value={(ram.used_bytes / 1073741824).toFixed(1) + ' GB'} />
+                  <Metric label="Available" value={(ram.available_bytes / 1073741824).toFixed(1) + ' GB'} />
+                  <Metric label="Total" value={(ram.total_bytes / 1073741824).toFixed(1) + ' GB'} />
+                  <Metric label="Utilization" value={reading(ram.utilization_percent, '%', 1)} />
+                </div> : <div className="overview-unavailable-state"><span>System memory telemetry isn’t available.</span><small>Windows did not return a physical memory reading.</small></div>}
               </article>
 
-              <article className="overview-hardware-card overview-hardware-card--unavailable">
+              <article className="overview-hardware-card">
                 <div className="overview-hardware-card__top">
                   <HardwareIcon kind="storage" />
                   <div className="overview-hardware-card__identity">
@@ -415,10 +430,10 @@ export function DashboardPage() {
                     <p>Disk capacity and usage</p>
                   </div>
                 </div>
-                <div className="overview-unavailable-state">
-                  <span>Storage telemetry isn’t available.</span>
-                  <small>No capacity or free-space data is exposed by current services.</small>
-                </div>
+                {storage?.length ? <div className="overview-hardware-card__metrics">{storage.map((disk) => <div className="overview-metric" key={disk.volume}>
+                  <span>{disk.volume} · {(disk.used_bytes / 1073741824).toFixed(1)} / {(disk.total_bytes / 1073741824).toFixed(1)} GB used · {(disk.utilization_percent).toFixed(1)}%</span>
+                  <strong>{(disk.user_available_bytes / 1073741824).toFixed(1)} GB available to you</strong>
+                </div>)}</div> : <div className="overview-unavailable-state"><span>Storage telemetry isn’t available.</span><small>{storage === null ? 'Volume capacity could not be read.' : 'No accessible volumes were found.'}</small></div>}
               </article>
             </section>
 

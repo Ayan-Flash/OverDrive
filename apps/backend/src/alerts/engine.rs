@@ -70,8 +70,7 @@ impl AlertEngine {
             (AlertMetric::CoreUtilization, sample.core_utilization_percent),
             (AlertMetric::MemoryUtilization, sample.memory_utilization_percent),
             (AlertMetric::Voltage, sample.core_voltage_mv),
-        ]
-        .into();
+        ].into_iter().filter_map(|(key, value)| value.map(|v| (key, v))).collect();
 
         for rule in rules.iter() {
             if rule.gpu_id != sample.gpu_id || !rule.enabled {
