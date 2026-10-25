@@ -14,7 +14,7 @@ interface GpuPanelProps {
   temperature: number | null;  // Celsius
   usage: number | null;        // percent
   memoryClock?: number | null; // MHz
-  maxTgp?: number | null; // W
+  maxPowerLimit?: number | null; // W, the driver's maximum allowed limit
   maxFrequency?: number;
 }
 
@@ -35,7 +35,7 @@ export function GpuPanel({
   temperature,
   usage,
   memoryClock,
-  maxTgp,
+  maxPowerLimit,
   maxFrequency = 2500,
 }: GpuPanelProps) {
   const freqPercent = frequency != null ? Math.min((frequency / maxFrequency) * 100, 100) : 0;
@@ -48,7 +48,7 @@ export function GpuPanel({
       <div className="ac-info-row">
         <span className="ac-info-row__label">Frequency</span>
         <span className="ac-info-row__value">
-          {frequency != null && frequency > 0 ? (
+          {frequency != null ? (
             <SpringValue value={frequency} unit="MHz" />
           ) : (
             'N/A'
@@ -91,7 +91,7 @@ export function GpuPanel({
       <div className="ac-info-row">
         <span className="ac-info-row__label">Memory Frequency</span>
         <span className="ac-info-row__value">
-          {memoryClock != null && memoryClock > 0 ? (
+          {memoryClock != null ? (
             <SpringValue value={memoryClock} unit="MHz" />
           ) : (
             'N/A'
@@ -101,15 +101,15 @@ export function GpuPanel({
 
       <div className="ac-info-row">
         <span className="ac-info-row__label">Temperature</span>
-        <span className="ac-info-row__value">{temperature != null && temperature > 0 ? <SpringValue value={temperature} unit="°C" /> : 'N/A'}</span>
+        <span className="ac-info-row__value">{temperature != null ? <SpringValue value={temperature} unit="°C" decimals={1} /> : 'N/A'}</span>
       </div>
       <div className="ac-info-row">
         <span className="ac-info-row__label">Voltage</span>
-        <span className="ac-info-row__value">{voltage != null && voltage > 0 ? <SpringValue value={voltage} unit="mV" /> : 'N/A'}</span>
+        <span className="ac-info-row__value">{voltage != null ? <SpringValue value={voltage * 1000} unit="mV" /> : 'N/A'}</span>
       </div>
       <div className="ac-info-row">
-        <span className="ac-info-row__label">Max TGP</span>
-        <span className="ac-info-row__value">{maxTgp != null && maxTgp > 0 ? <SpringValue value={maxTgp} unit="W" /> : 'N/A'}</span>
+        <span className="ac-info-row__label">Max Power Limit</span>
+        <span className="ac-info-row__value">{maxPowerLimit != null ? <SpringValue value={maxPowerLimit} unit="W" decimals={1} /> : 'N/A'}</span>
       </div>
     </PanelFrame>
   );

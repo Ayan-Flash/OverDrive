@@ -135,9 +135,13 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(app_state)
         .manage(updater::UpdaterState::new())
+        .manage(hardware::sensor_runtime::SensorRuntime::default())
         .setup(|app| {
             let handle = app.handle().clone();
             updater::commands::spawn_auto_check(handle);
+
+            app.state::<hardware::sensor_runtime::SensorRuntime>()
+                .start_background(app.handle().clone());
 
             setup_tray(app)?;
 
@@ -292,7 +296,16 @@ pub fn run() {
             updater::commands::set_auto_check,
             updater::commands::set_check_interval,
         ])
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
+        .map(|app| {
+            app.run(|handle, event| {
+                if let tauri::RunEvent::Exit = event {
+                    handle
+                        .state::<hardware::sensor_runtime::SensorRuntime>()
+                        .stop();
+                }
+            });
+        })
         .unwrap_or_else(|e| {
             tracing::error!(error = %e, "Tauri application exited with error");
         });

@@ -3,8 +3,6 @@ use tracing::{info, warn};
 use super::provider::{
     GpuControlState, GpuIdentity, GpuProvider, GpuProviderError, GpuSample,
 };
-#[cfg(not(target_os = "windows"))]
-use super::simulated::SimulatedGpuProvider;
 
 struct UnavailableGpuProvider {
     reason: String,
@@ -76,26 +74,17 @@ pub fn create_provider() -> Box<dyn GpuProvider> {
             }
         }
 
-        info!("Attempting to initialize WMI GPU provider...");
-        match crate::hardware::wmi_provider::WmiGpuProvider::try_new() {
-            Ok(provider) => {
-                info!("WMI GPU provider initialized successfully");
-                return Box::new(provider);
-            }
-            Err(e) => {
-                warn!("WMI GPU provider failed: {}", e);
-            }
-        }
-
-        warn!("No real Windows GPU telemetry provider is available");
+        warn!("No supported GPU telemetry provider is available; AMD and Intel integrations are not implemented");
         return Box::new(UnavailableGpuProvider::new(
-            "No real Windows GPU telemetry provider is available",
+            "No supported Windows GPU telemetry provider is available. NVIDIA requires an installed driver with NVML; AMD and Intel telemetry are not implemented.",
         ));
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        info!("Non-Windows platform, falling back to simulated provider");
-        Box::new(SimulatedGpuProvider::new())
+        info!("GPU telemetry is unsupported on this platform");
+        Box::new(UnavailableGpuProvider::new(
+            "Live GPU telemetry is currently supported on Windows only",
+        ))
     }
 }

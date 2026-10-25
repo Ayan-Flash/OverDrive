@@ -1,5 +1,6 @@
 use std::sync::Mutex;
 
+use std::path::PathBuf;
 use libloading::{Library, Symbol};
 use tracing::{info, warn};
 
@@ -7,10 +8,42 @@ use super::provider::*;
 
 type NvmlReturn = u32;
 const NVML_SUCCESS: u32 = 0;
-const NVML_ERROR_NOT_SUPPORTED: u32 = 5;
-const NVML_ERROR_GPU_IS_LOST: u32 = 14;
-
 type NvmlDevice = *mut std::ffi::c_void;
+
+fn load_nvml_library() -> Result<Library, String> {
+    let mut candidates = Vec::<PathBuf>::new();
+
+    #[cfg(windows)]
+    {
+        if let Some(program_files) = std::env::var_os("ProgramW6432")
+            .or_else(|| std::env::var_os("ProgramFiles"))
+        {
+            candidates.push(
+                PathBuf::from(program_files)
+                    .join("NVIDIA Corporation")
+                    .join("NVSMI")
+                    .join("nvml.dll"),
+            );
+        }
+        if let Some(windows_dir) = std::env::var_os("SystemRoot") {
+            candidates.push(PathBuf::from(windows_dir).join("System32").join("nvml.dll"));
+        }
+    }
+
+    // Keep PATH lookup as a fallback for custom driver installations.
+    candidates.push(PathBuf::from("nvml.dll"));
+    let mut errors = Vec::new();
+    for candidate in candidates {
+        match unsafe { Library::new(&candidate) } {
+            Ok(library) => {
+                info!(path = %candidate.display(), "Loaded NVIDIA NVML library");
+                return Ok(library);
+            }
+            Err(error) => errors.push(format!("{}: {error}", candidate.display())),
+        }
+    }
+    Err(format!("Could not load nvml.dll; tried {}", errors.join("; ")))
+}
 
 pub struct NvidiaProvider {
     lib: Mutex<Option<Library>>,
@@ -22,36 +55,16 @@ unsafe impl Sync for NvidiaProvider {}
 
 impl NvidiaProvider {
     pub fn try_new() -> Result<Self, String> {
-        let lib = unsafe {
-            Library::new("nvml.dll").map_err(|e| format!("Failed to load nvml.dll: {}", e))?
-        };
+        let lib = load_nvml_library()?;
 
         let nvml_init: Symbol<unsafe extern "C" fn() -> NvmlReturn> = unsafe {
             lib.get(b"nvmlInit_v2").map_err(|e| format!("nvmlInit_v2 not found: {}", e))?
         };
 
-        let result = unsafe { nvml_init() };
-        if result != NVML_SUCCESS {
-            return Err(format!("nvmlInit_v2 failed: error {}", result));
-        }
-
-        info!("NVML initialized successfully");
-
         let nvml_device_get_count: Symbol<unsafe extern "C" fn(*mut u32) -> NvmlReturn> = unsafe {
             lib.get(b"nvmlDeviceGetCount_v2")
                 .map_err(|e| format!("nvmlDeviceGetCount_v2 not found: {}", e))?
         };
-
-        let mut count: u32 = 0;
-        let result = unsafe { nvml_device_get_count(&mut count) };
-        if result != NVML_SUCCESS || count == 0 {
-            if let Ok(nvml_shutdown) = unsafe {
-                lib.get::<unsafe extern "C" fn() -> NvmlReturn>(b"nvmlShutdown")
-            } {
-                unsafe { nvml_shutdown(); }
-            }
-            return Err("No NVIDIA GPUs found".into());
-        }
 
         let nvml_device_get_handle_by_index: Symbol<
             unsafe extern "C" fn(u32, *mut NvmlDevice) -> NvmlReturn,
@@ -67,6 +80,28 @@ impl NvidiaProvider {
                 .map_err(|e| format!("nvmlDeviceGetName not found: {}", e))?
         };
 
+        let result = unsafe { nvml_init() };
+        if result != NVML_SUCCESS {
+            return Err(format!("nvmlInit_v2 failed: error {}", result));
+        }
+
+        info!("NVML initialized successfully");
+
+        let mut count: u32 = 0;
+        let result = unsafe { nvml_device_get_count(&mut count) };
+        if result != NVML_SUCCESS || count == 0 {
+            if let Ok(nvml_shutdown) = unsafe {
+                lib.get::<unsafe extern "C" fn() -> NvmlReturn>(b"nvmlShutdown")
+            } {
+                unsafe { nvml_shutdown(); }
+            }
+            return if result == NVML_SUCCESS {
+                Err("NVML found no NVIDIA GPUs".into())
+            } else {
+                Err(format!("nvmlDeviceGetCount_v2 failed: error {result}"))
+            };
+        }
+
         let mut devices = Vec::new();
         for i in 0..count {
             let mut handle: NvmlDevice = std::ptr::null_mut();
@@ -77,7 +112,11 @@ impl NvidiaProvider {
             }
 
             let mut name_buf = [0i8; 256];
-            unsafe { nvml_device_get_name(handle, name_buf.as_mut_ptr(), 256); }
+            let name_result = unsafe { nvml_device_get_name(handle, name_buf.as_mut_ptr(), 256) };
+            if name_result != NVML_SUCCESS {
+                warn!(index = i, "Failed to read NVIDIA GPU name");
+                continue;
+            }
             let name = unsafe {
                 std::ffi::CStr::from_ptr(name_buf.as_ptr())
                     .to_string_lossy()
@@ -94,6 +133,15 @@ impl NvidiaProvider {
 
             info!(name = %identity.name, index = i, "Found NVIDIA GPU");
             devices.push((handle, identity));
+        }
+
+        if devices.is_empty() {
+            if let Ok(nvml_shutdown) = unsafe {
+                lib.get::<unsafe extern "C" fn() -> NvmlReturn>(b"nvmlShutdown")
+            } {
+                unsafe { nvml_shutdown(); }
+            }
+            return Err("NVML initialized but no usable NVIDIA devices were found".into());
         }
 
         Ok(Self {
@@ -122,7 +170,11 @@ impl NvidiaProvider {
         };
         let mut mem = NvmlMemory { total: 0, free: 0, used: 0 };
         let result = unsafe { func(device, &mut mem) };
-        if result == NVML_SUCCESS { Some((mem.total, mem.used)) } else { None }
+        if result == NVML_SUCCESS && mem.total > 0 && mem.used <= mem.total {
+            Some((mem.total, mem.used))
+        } else {
+            None
+        }
     }
 
     fn read_temp(&self, lib: &Library, device: NvmlDevice) -> Option<f64> {
@@ -131,7 +183,7 @@ impl NvidiaProvider {
         };
         let mut temp: u32 = 0;
         let result = unsafe { func(device, 0, &mut temp) }; // NVML_TEMPERATURE_GPU = 0
-        if result == NVML_SUCCESS { Some(temp as f64) } else { None }
+        if result == NVML_SUCCESS && temp <= 150 { Some(temp as f64) } else { None }
     }
 
     fn read_clocks(&self, lib: &Library, device: NvmlDevice) -> (Option<f64>, Option<f64>) {
@@ -155,9 +207,9 @@ impl NvidiaProvider {
         let func: Symbol<unsafe extern "C" fn(NvmlDevice, *mut u32) -> NvmlReturn> = unsafe {
             lib.get(b"nvmlDeviceGetPowerUsage").ok()?
         };
-        let mut power: u32 = 0;
-        let result = unsafe { func(device, &mut power) };
-        if result == NVML_SUCCESS { Some(power as f64 / 1000.0) } else { None }
+        let mut power_milliwatts = 0;
+        let result = unsafe { func(device, &mut power_milliwatts) };
+        (result == NVML_SUCCESS).then_some(power_milliwatts as f64 / 1000.0)
     }
 
     fn read_max_power_limit(&self, lib: &Library, device: NvmlDevice) -> Option<f64> {
@@ -179,7 +231,11 @@ impl NvidiaProvider {
         };
         let mut speed: u32 = 0;
         let result = unsafe { func(device, 0, &mut speed) };
-        if result == NVML_SUCCESS { Some(speed as f64) } else { None }
+        if result == NVML_SUCCESS && speed <= 100 {
+            Some(speed as f64)
+        } else {
+            None
+        }
     }
 
     fn read_utilization(&self, lib: &Library, device: NvmlDevice) -> (Option<f64>, Option<f64>) {
@@ -192,7 +248,7 @@ impl NvidiaProvider {
         if let Ok(func) = unsafe { lib.get::<unsafe extern "C" fn(NvmlDevice, *mut NvmlUtilization) -> NvmlReturn>(b"nvmlDeviceGetUtilizationRates") } {
             let mut util = NvmlUtilization { gpu: 0, memory: 0 };
             let result = unsafe { func(device, &mut util) };
-            if result == NVML_SUCCESS {
+            if result == NVML_SUCCESS && util.gpu <= 100 && util.memory <= 100 {
                 (Some(util.gpu as f64), Some(util.memory as f64))
             } else {
                 (None, None)
@@ -278,14 +334,14 @@ impl GpuProvider for NvidiaProvider {
     }
 
     fn read_control_state(&self, gpu_id: &str) -> Result<GpuControlState, GpuProviderError> {
-        Ok(GpuControlState {
-            gpu_id: gpu_id.into(),
-            target_fan_speed: None,
-            core_clock_offset_mhz: 0,
-            memory_clock_offset_mhz: 0,
-            power_limit_percent: None,
-            voltage_offset_mv: 0,
-        })
+        if !self.devices.lock().map_err(|error| GpuProviderError::ReadError(error.to_string()))?
+            .iter().any(|(_, identity)| identity.id == gpu_id)
+        {
+            return Err(GpuProviderError::GpuNotFound(gpu_id.into()));
+        }
+        Err(GpuProviderError::NotAvailable(
+            "GPU control state is not exposed by the current NVML integration".into(),
+        ))
     }
 
     fn set_fan_speed(&self, _gpu_id: &str, _percent: f64) -> Result<(), GpuProviderError> {
@@ -333,3 +389,21 @@ impl Drop for NvidiaProvider {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_nvidia_provider_sample_live() {
+        if let Ok(provider) = NvidiaProvider::try_new() {
+            let gpus = provider.enumerate().expect("enumerate failed");
+            assert!(!gpus.is_empty(), "Should have at least 1 NVIDIA GPU");
+            let sample = provider.read_sample(&gpus[0].id).expect("read_sample failed");
+            println!("NVIDIA GPU Sample: {:?}", sample);
+            assert!(sample.temperature_celsius.is_some(), "GPU temperature should be available");
+            println!("GPU Power watts: {:?}", sample.power_watts);
+        }
+    }
+}
+

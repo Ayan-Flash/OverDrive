@@ -186,11 +186,7 @@ export function DashboardPage() {
   }, [setAlerts]);
 
   const cpuDetected = cpu.model !== 'CPU';
-  const cpuHasData =
-    cpuDetected ||
-    cpu.cores.length > 0 ||
-    (Number.isFinite(cpu.frequency) && cpu.frequency > 0) ||
-    (cpu.temperature != null && Number.isFinite(cpu.temperature));
+  const cpuHasData = cpu.telemetryAvailable;
   const gpu = selectedGpuId ? currentData.get(selectedGpuId) : undefined;
   const selectedGpu = gpus.find((item) => item.id === selectedGpuId);
   const cpuTemperature = cpuHasData && Number.isFinite(cpu.temperature) ? cpu.temperature : null;
@@ -317,12 +313,12 @@ export function DashboardPage() {
                   max={100}
                   unit="°C"
                   label="Temperature"
-                  precision={0}
+                  precision={1}
                 />
                 <div className="overview-hardware-card__metrics">
                   <Metric label="Utilization" value={reading(cpuHasData ? cpu.usage : null, '%')} />
                   <Metric
-                    label="Clock"
+                    label="Fastest core clock"
                     value={reading(cpuHasData ? cpu.frequency : null, ' MHz')}
                   />
                   <Metric
@@ -334,6 +330,22 @@ export function DashboardPage() {
                     }
                   />
                 </div>
+                {Boolean(cpu.coreTemperatures && cpu.coreTemperatures.length > 0) && (
+                  <div style={{ marginTop: 14 }}>
+                    <div style={{ marginBottom: 8, color: 'var(--ac-text-secondary)', fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                      CPU core temperatures
+                    </div>
+                    <div className="overview-hardware-card__metrics">
+                      {cpu.coreTemperatures?.map((sensor) => (
+                        <Metric
+                          key={sensor.name}
+                          label={sensor.name}
+                          value={reading(sensor.temperature, '°C', 1)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </article>
 
               <article className="overview-hardware-card">
@@ -368,7 +380,7 @@ export function DashboardPage() {
                       max={100}
                       unit="°C"
                       label="Temperature"
-                      precision={0}
+                      precision={1}
                     />
                     <div className="overview-hardware-card__metrics overview-hardware-card__metrics--gpu">
                       <Metric label="Utilization" value={reading(gpuUtilization, '%')} />
@@ -390,7 +402,7 @@ export function DashboardPage() {
                     <p>
                       {gpus.length
                         ? 'Waiting for the first GPU reading.'
-                        : 'No compatible GPU was detected.'}
+                        : 'No supported GPU telemetry provider was found. NVIDIA needs NVML from its driver; AMD and Intel GPU support is not implemented yet.'}
                     </p>
                     {error && (
                       <small className="overview-error">

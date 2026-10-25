@@ -1,59 +1,22 @@
-import { useEffect, useState } from 'react';
 import { useGpuStore, useUiStore } from '../stores';
-import { FanControl } from '../components/feature/FanControl';
 import { formatClockSpeed } from '@common/utils';
-import { controlService } from '../services';
 
 export function ControlPage() {
-  const { currentData, controlStates, fetchControlState } = useGpuStore();
+  const { currentData, gpus } = useGpuStore();
   const { selectedGpuId } = useUiStore();
-  const [coreOffset, setCoreOffset] = useState(0);
-  const [memOffset, setMemOffset] = useState(0);
-  const [powerLimit, setPowerLimit] = useState(100);
-  const [voltageOffset, setVoltageOffset] = useState(0);
-
   const data = selectedGpuId ? currentData.get(selectedGpuId) : null;
-  const control = selectedGpuId ? controlStates.get(selectedGpuId) : null;
-
-  useEffect(() => {
-    if (selectedGpuId) {
-      fetchControlState(selectedGpuId);
-    }
-  }, [selectedGpuId, fetchControlState]);
-
-  useEffect(() => {
-    if (control) {
-      setCoreOffset(control.core_clock_offset_mhz);
-      setMemOffset(control.memory_clock_offset_mhz);
-      setPowerLimit(control.power_limit_percent ?? 100);
-      setVoltageOffset(control.voltage_offset_mv);
-    }
-  }, [control]);
-
-  const handleCoreOffset = async (value: number) => {
-    setCoreOffset(value);
-    if (selectedGpuId) {
-      await controlService.setCoreClockOffset(selectedGpuId, value);
-    }
-  };
-
-  const handleMemOffset = async (value: number) => {
-    setMemOffset(value);
-    if (selectedGpuId) {
-      await controlService.setMemoryClockOffset(selectedGpuId, value);
-    }
-  };
+  const selectedGpu = gpus.find((gpu) => gpu.id === selectedGpuId);
 
   return (
     <div className="ac-page ac-page--wide">
       <div className="ac-page-header">
         <div className="ac-page-header__left">
-          <span className="ac-page-header__title">GPU Control</span>
-          <span className="ac-page-header__desc">Overclocking, fan control, and power management</span>
+          <span className="ac-page-header__title">GPU Tuning</span>
+          <span className="ac-page-header__desc">Hardware telemetry and supported controls</span>
         </div>
         {selectedGpuId && (
           <div className="ac-page-header__right">
-            <span className="ac-badge ac-badge--blue">{selectedGpuId}</span>
+            <span className="ac-badge ac-badge--blue">{selectedGpu?.name ?? selectedGpuId}</span>
           </div>
         )}
       </div>
@@ -85,85 +48,21 @@ export function ControlPage() {
           </div>
         </div>
       )}
-
-      {selectedGpuId && data?.fan_speed_percent != null && (
-        <FanControl gpuId={selectedGpuId} currentSpeed={data.fan_speed_percent} />
-      )}
-
-      <div className="ac-grid-2">
-        <div className="ac-page-card">
-          <div className="ac-page-card__header">
-            <span className="ac-page-card__title">Core Clock Offset</span>
-            <span className={`ac-metric ${coreOffset >= 0 ? '' : ''}`}
-              style={{ fontSize: 14, color: coreOffset >= 0 ? '#34d399' : '#f55' }}>
-              {coreOffset >= 0 ? '+' : ''}{coreOffset} MHz
-            </span>
-          </div>
-          <div className="ac-page-card__body" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <input type="range" min={-500} max={500} step={5} value={coreOffset}
-              onChange={(e) => handleCoreOffset(Number(e.target.value))}
-              className="ac-slider" />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--ac-text-dim)' }}>
-              <span>-500</span><span>0</span><span>+500</span>
-            </div>
-          </div>
+      <section className="ac-page-card" aria-labelledby="tuning-availability-title">
+        <div className="ac-page-card__header">
+          <span className="ac-page-card__title" id="tuning-availability-title">Tuning controls unavailable</span>
         </div>
-
-        <div className="ac-page-card">
-          <div className="ac-page-card__header">
-            <span className="ac-page-card__title">Memory Clock Offset</span>
-            <span className="ac-metric" style={{ fontSize: 14, color: memOffset >= 0 ? '#34d399' : '#f55' }}>
-              {memOffset >= 0 ? '+' : ''}{memOffset} MHz
-            </span>
-          </div>
-          <div className="ac-page-card__body" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <input type="range" min={-2000} max={2000} step={10} value={memOffset}
-              onChange={(e) => handleMemOffset(Number(e.target.value))}
-              className="ac-slider" />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--ac-text-dim)' }}>
-              <span>-2000</span><span>0</span><span>+2000</span>
-            </div>
-          </div>
+        <div className="ac-page-card__body">
+          <p>
+            {selectedGpu
+              ? `Live readings for ${selectedGpu.name} are shown above. This build does not yet have a supported driver API for changing its fan curve, clocks, voltage, or power limit.`
+              : 'Select a detected GPU to view its live readings. Fan, clock, voltage, and power controls will appear only after a supported vendor driver API is available.'}
+          </p>
+          <p>
+            NVIDIA monitoring uses NVML when the NVIDIA driver exposes it. AMD and Intel GPU monitoring and all GPU tuning controls still need vendor API integrations; Windows WMI does not provide those readings here.
+          </p>
         </div>
-
-        <div className="ac-page-card">
-          <div className="ac-page-card__header">
-            <span className="ac-page-card__title">Power Limit</span>
-            <span className="ac-metric" style={{ fontSize: 14, color: '#fbbf24' }}>{powerLimit}%</span>
-          </div>
-          <div className="ac-page-card__body" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <input type="range" min={50} max={150} step={1} value={powerLimit}
-              onChange={(e) => {
-                setPowerLimit(Number(e.target.value));
-                if (selectedGpuId) controlService.setPowerLimit(selectedGpuId, Number(e.target.value));
-              }}
-              className="ac-slider" />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--ac-text-dim)' }}>
-              <span>50%</span><span>100%</span><span>150%</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="ac-page-card">
-          <div className="ac-page-card__header">
-            <span className="ac-page-card__title">Voltage Offset</span>
-            <span className="ac-metric" style={{ fontSize: 14, color: voltageOffset >= 0 ? '#34d399' : '#f55' }}>
-              {voltageOffset >= 0 ? '+' : ''}{voltageOffset} mV
-            </span>
-          </div>
-          <div className="ac-page-card__body" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <input type="range" min={-200} max={200} step={5} value={voltageOffset}
-              onChange={(e) => {
-                setVoltageOffset(Number(e.target.value));
-                if (selectedGpuId) controlService.setVoltageOffset(selectedGpuId, Number(e.target.value));
-              }}
-              className="ac-slider" />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--ac-text-dim)' }}>
-              <span>-200</span><span>0</span><span>+200</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      </section>
     </div>
   );
 }

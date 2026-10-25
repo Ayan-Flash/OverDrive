@@ -12,6 +12,11 @@ export interface CpuCoreData {
   usage: number; // %
 }
 
+export interface CpuTemperatureData {
+  name: string;
+  temperature: number;
+}
+
 export interface CpuData {
   model: string;
   vendor: string;
@@ -23,7 +28,9 @@ export interface CpuData {
   temperature: number | null;
   maxFrequency: number;
   cores: CpuCoreData[];
+  coreTemperatures: CpuTemperatureData[];
   isElevated: boolean;
+  telemetryAvailable: boolean;
 }
 
 const DEFAULT_DATA: CpuData = {
@@ -37,7 +44,9 @@ const DEFAULT_DATA: CpuData = {
   temperature: null,
   maxFrequency: 5000,
   cores: [],
+  coreTemperatures: [],
   isElevated: false,
+  telemetryAvailable: false,
 };
 
 export function useCpuData(): CpuData {
@@ -48,13 +57,35 @@ export function useCpuData(): CpuData {
   useEffect(() => {
     if (infoFetched.current) return;
     infoFetched.current = true;
-    cpuService.getInfo().then((i) => { infoRef.current = i; }).catch(() => {});
+    cpuService
+      .getInfo()
+      .then((info) => {
+        infoRef.current = info;
+        setData((prev) => ({
+          ...prev,
+          model: info.model,
+          vendor: info.vendor,
+          physicalCores: info.physical_cores,
+          logicalCores: info.logical_cores,
+          isElevated: info.is_elevated,
+        }));
+      })
+      .catch(() => {});
   }, []);
 
   const poll = useCallback(async () => {
     try {
+      let info = infoRef.current;
+      if (!info) {
+        try {
+          info = await cpuService.getInfo();
+          infoRef.current = info;
+        } catch {
+          /* Ignore and proceed with sample */
+        }
+      }
+
       const s = await cpuService.getSample();
-      const info = infoRef.current;
 
       setData({
         model: info?.model ?? 'CPU',
@@ -71,7 +102,12 @@ export function useCpuData(): CpuData {
           frequency: c.frequency_mhz,
           usage: c.usage_percent,
         })),
+        coreTemperatures: (s.core_temperatures ?? []).map((sensor) => ({
+          name: sensor.name,
+          temperature: sensor.temperature_celsius,
+        })),
         isElevated: info?.is_elevated ?? false,
+        telemetryAvailable: true,
       });
     } catch {
       /* Backend not reachable — keep last known values. */

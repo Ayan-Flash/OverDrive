@@ -27,6 +27,8 @@ export interface CpuSample {
   usage_percent: number;
   /** null when the OS exposes no CPU thermal sensor. */
   temperature_celsius: number | null;
+  /** Labeled physical core temperatures, only when the sensor provider exposes them. */
+  core_temperatures?: Array<{ name: string; temperature_celsius: number }>;
   /** null — CPU voltage requires a kernel-mode sensor driver. */
   voltage_volts: number | null;
   cores: CpuCoreSample[];

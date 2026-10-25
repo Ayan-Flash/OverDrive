@@ -59,7 +59,7 @@ describe('Dashboard overview', () => {
     render(<DashboardPage />);
 
     expect(screen.getByText('CPU data unavailable')).toBeInTheDocument();
-    expect(screen.getByText('No compatible GPU was detected.')).toBeInTheDocument();
+    expect(screen.getByText(/No supported GPU telemetry provider was found/i)).toBeInTheDocument();
     expect(screen.getByText('System memory telemetry isn’t available.')).toBeInTheDocument();
     expect(screen.getByText('Storage telemetry isn’t available.')).toBeInTheDocument();
     expect(screen.getAllByRole('img', { name: 'Temperature: unavailable' })).toHaveLength(2);

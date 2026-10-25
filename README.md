@@ -9,9 +9,9 @@
 
 ---
 
-**Professional GPU Monitoring & Control for Windows** — Modern desktop application for real-time GPU monitoring, overclocking, fan control, and performance optimization.
+**Windows hardware monitoring desktop app** — GPUControl Pro is built with Tauri, Rust, and React. It currently reads CPU and system-memory telemetry, and reads NVIDIA GPU telemetry through NVML when the installed driver exposes it.
 
-Inspired by MSI Afterburner, built with enterprise-quality architecture.
+The interface is a custom hardware dashboard. It does not yet match the sensor coverage or tuning capabilities of CPUID HWMonitor, Armory Crate, or MSI Center. GPU tuning controls are not implemented, and AMD/Intel GPU telemetry is not yet supported. See [hardware support](docs/HARDWARE_SUPPORT.md) for current requirements and API work needed.
 
 ## Quick Start
 
