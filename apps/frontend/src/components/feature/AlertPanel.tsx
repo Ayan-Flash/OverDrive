@@ -23,14 +23,14 @@ export function AlertPanel() {
     <div className="card flex flex-col gap-2 p-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-text-primary text-xs font-semibold uppercase tracking-wide">Alerts</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-text-primary">Alerts</span>
           {unacknowledgedCount > 0 && (
-            <span className="bg-accent/20 text-accent-bright inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold">
+            <span className="text-accent-bright inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent/20 px-1 text-[10px] font-bold">
               {unacknowledgedCount}
             </span>
           )}
         </div>
-        <button onClick={clearAlerts} className="text-text-muted hover:text-text-secondary text-[10px] uppercase tracking-wider transition-colors">
+        <button onClick={clearAlerts} className="text-text-muted text-[10px] uppercase tracking-wider transition-colors hover:text-text-secondary">
           Clear
         </button>
       </div>
@@ -43,13 +43,13 @@ export function AlertPanel() {
               alert.acknowledged ? 'opacity-40' : ''
             }`}
           >
-            <span className="text-text-secondary flex-1 leading-relaxed">{alert.message}</span>
+            <span className="flex-1 leading-relaxed text-text-secondary">{alert.message}</span>
             <div className="flex flex-shrink-0 items-center gap-1.5">
-              <span className="text-text-dim text-[10px]">{new Date(alert.timestamp).toLocaleTimeString()}</span>
+              <span className="text-[10px] text-text-dim">{new Date(alert.timestamp).toLocaleTimeString()}</span>
               {!alert.acknowledged && (
                 <button
                   onClick={() => acknowledgeAlert(alert.id)}
-                  className="bg-gpu-700 hover:bg-gpu-600 text-text-muted hover:text-text-secondary flex size-4 items-center justify-center rounded transition-colors"
+                  className="text-text-muted flex size-4 items-center justify-center rounded bg-gpu-700 transition-colors hover:bg-gpu-600 hover:text-text-secondary"
                   title="Acknowledge"
                 >
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">

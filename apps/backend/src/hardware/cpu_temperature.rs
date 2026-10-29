@@ -6,7 +6,7 @@
 use serde::Deserialize;
 use std::time::{Duration, Instant};
 
-const CACHE_TTL: Duration = Duration::from_secs(3);
+const CACHE_TTL: Duration = Duration::from_secs(1);
 const CACHE_UNAVAILABLE_TTL: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone, Deserialize)]
@@ -81,7 +81,7 @@ impl CpuTemperatureReader {
         }
     }
 
-    /// Read CPU package temperature in Celsius, refreshing at most every 3 seconds (5s if unavailable).
+    /// Read CPU sensors once per second when available (5s if unavailable).
     pub fn read(&self) -> CpuTemperatureReadings {
         let mut cached = self
             .cached

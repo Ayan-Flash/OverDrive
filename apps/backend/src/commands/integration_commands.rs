@@ -34,7 +34,7 @@ pub async fn send_discord_alert(
 ) -> Result<(), String> {
     DiscordWebhook::send_alert(
         &webhook_url,
-        "GPUControl Pro",
+        "OverDrive",
         "",
         &gpu_name,
         &metric,
@@ -65,7 +65,7 @@ pub async fn send_discord_report(
         ("Memory Clock", sample.memory_clock_mhz, "MHz"),
     ].into_iter().filter_map(|(label, value, unit)| value.map(|v| (label.into(), v, unit.into()))).collect();
 
-    DiscordWebhook::send_report(&webhook_url, "GPUControl Pro", "", "GPU 0", &metrics).await
+    DiscordWebhook::send_report(&webhook_url, "OverDrive", "", "GPU 0", &metrics).await
 }
 
 #[tauri::command]

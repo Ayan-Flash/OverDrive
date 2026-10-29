@@ -51,11 +51,80 @@ pub struct GpuSample {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuControlState {
     pub gpu_id: String,
+    /// Manual fan target percent that the provider last applied, when a manual
+    /// fan target exists. Absent while the driver owns the fan curve.
     pub target_fan_speed: Option<f64>,
+    /// `Some(true)` when the driver owns fan control (automatic), `Some(false)`
+    /// when a manual target is active, and `None` when the driver does not
+    /// expose its fan policy.
+    #[serde(default)]
+    pub fan_control_automatic: Option<bool>,
+    /// Total controllable fans on the card, when known.
+    #[serde(default)]
+    pub fan_count: Option<u32>,
     pub core_clock_offset_mhz: i32,
     pub memory_clock_offset_mhz: i32,
     pub power_limit_percent: Option<f64>,
+    /// Power-limit slider bounds as percent of the default limit.
+    #[serde(default)]
+    pub power_limit_min_percent: Option<f64>,
+    #[serde(default)]
+    pub power_limit_max_percent: Option<f64>,
     pub voltage_offset_mv: i32,
+    /// Maximally configurable |core clock| offset in MHz for slider limits.
+    #[serde(default)]
+    pub core_clock_offset_limit_mhz: i32,
+    /// Maximally configurable |memory clock| offset in MHz for slider limits.
+    #[serde(default)]
+    pub memory_clock_offset_limit_mhz: i32,
+    /// Whether the provider can actually perform each kind of control on this
+    /// GPU under the current driver and session permissions.
+    #[serde(default)]
+    pub capabilities: GpuControlCapabilities,
+}
+
+impl GpuControlState {
+    /// Neutral state for a GPU whose driver exposes no readable control data.
+    pub fn unavailable(gpu_id: &str) -> Self {
+        Self {
+            gpu_id: gpu_id.to_string(),
+            target_fan_speed: None,
+            fan_control_automatic: None,
+            fan_count: None,
+            core_clock_offset_mhz: 0,
+            memory_clock_offset_mhz: 0,
+            power_limit_percent: None,
+            power_limit_min_percent: None,
+            power_limit_max_percent: None,
+            voltage_offset_mv: 0,
+            core_clock_offset_limit_mhz: 0,
+            memory_clock_offset_limit_mhz: 0,
+            capabilities: GpuControlCapabilities::all_unavailable(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq)]
+pub struct GpuControlCapabilities {
+    pub fan_control: bool,
+    pub core_clock_offset: bool,
+    pub memory_clock_offset: bool,
+    pub power_limit: bool,
+    /// Voltage offsetting is not exposed by any NVML function for GeForce
+    /// cards; the capability stays false until a provider supports it.
+    pub voltage_offset: bool,
+}
+
+impl GpuControlCapabilities {
+    pub fn all_unavailable() -> Self {
+        Self {
+            fan_control: false,
+            core_clock_offset: false,
+            memory_clock_offset: false,
+            power_limit: false,
+            voltage_offset: false,
+        }
+    }
 }
 
 pub trait GpuProvider: Send + Sync {
@@ -72,6 +141,12 @@ pub trait GpuProvider: Send + Sync {
     ) -> Result<(), GpuProviderError>;
     fn set_power_limit(&self, gpu_id: &str, percent: f64) -> Result<(), GpuProviderError>;
     fn set_voltage_offset(&self, gpu_id: &str, offset_mv: i32) -> Result<(), GpuProviderError>;
+    /// Give the fans back to the driver's own automatic policy (used when a
+    /// custom fan curve is disabled).
+    fn set_fan_control_automatic(&self, gpu_id: &str) -> Result<(), GpuProviderError>;
+    /// Restore driver defaults: zeroed clock offsets, default power limit, and
+    /// automatic (driver-owned) fan control.
+    fn reset_controls(&self, gpu_id: &str) -> Result<(), GpuProviderError>;
 }
 
 #[derive(Debug, thiserror::Error)]

@@ -58,6 +58,14 @@ impl GpuProvider for UnavailableGpuProvider {
     fn set_voltage_offset(&self, _gpu_id: &str, _offset_mv: i32) -> Result<(), GpuProviderError> {
         Err(GpuProviderError::NotAvailable(self.reason.clone()))
     }
+
+    fn set_fan_control_automatic(&self, _gpu_id: &str) -> Result<(), GpuProviderError> {
+        Err(GpuProviderError::NotAvailable(self.reason.clone()))
+    }
+
+    fn reset_controls(&self, _gpu_id: &str) -> Result<(), GpuProviderError> {
+        Err(GpuProviderError::NotAvailable(self.reason.clone()))
+    }
 }
 
 pub fn create_provider() -> Box<dyn GpuProvider> {
@@ -75,9 +83,9 @@ pub fn create_provider() -> Box<dyn GpuProvider> {
         }
 
         warn!("No supported GPU telemetry provider is available; AMD and Intel integrations are not implemented");
-        return Box::new(UnavailableGpuProvider::new(
+        Box::new(UnavailableGpuProvider::new(
             "No supported Windows GPU telemetry provider is available. NVIDIA requires an installed driver with NVML; AMD and Intel telemetry are not implemented.",
-        ));
+        ))
     }
 
     #[cfg(not(target_os = "windows"))]

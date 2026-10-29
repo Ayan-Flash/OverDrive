@@ -1,5 +1,5 @@
 {
-  "name": "@gpucontrol-pro/monitoring",
+  "name": "@overdrive/monitoring",
   "version": "0.1.0",
   "private": true,
   "type": "module",

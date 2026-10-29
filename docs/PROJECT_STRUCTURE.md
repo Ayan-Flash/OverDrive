@@ -1,4 +1,4 @@
-# GPUControl Pro - Project Structure Documentation
+# OverDrive - Project Structure Documentation
 
 > **Version**: 1.0.0  
 > **Last Updated**: 2024  
@@ -24,7 +24,7 @@
 
 ## Overview
 
-GPUControl Pro follows a **monorepo** structure with clear separation between applications, shared packages, and support files. This structure enables:
+OverDrive follows a **monorepo** structure with clear separation between applications, shared packages, and support files. This structure enables:
 
 - **Independent Development**: Each app can be developed and tested separately
 - **Code Reuse**: Shared code is in packages, avoiding duplication
@@ -36,7 +36,7 @@ GPUControl Pro follows a **monorepo** structure with clear separation between ap
 ## Root Directory
 
 ```
-gpucontrol-pro/
+overdrive/
 ```
 
 ### Purpose
@@ -490,7 +490,7 @@ GitHub configuration, including workflows, issue templates, and PR templates.
 
 ```json
 {
-  "name": "gpucontrol-pro-frontend",
+  "name": "overdrive-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -541,7 +541,7 @@ members = [
 ]
 
 [package]
-name = "gpucontrol-pro-backend"
+name = "overdrive-backend"
 version = "0.1.0"
 edition = "2021"
 

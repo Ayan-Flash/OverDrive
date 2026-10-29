@@ -44,3 +44,6 @@ temp/
 WORK_LOG.md
 WORK_DONE.md
 
+
+# Vendor binaries (reverse-engineering source material, analysis only - never commit)
+MSIAfterburnerSetup467Beta2.zip

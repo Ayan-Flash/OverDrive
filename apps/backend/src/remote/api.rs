@@ -52,7 +52,7 @@ impl RemoteApi {
         let alert_count = self.alerts.get_rules().len();
         serde_json::json!({
             "version": env!("CARGO_PKG_VERSION"),
-            "name": "GPUControl Pro Remote",
+            "name": "OverDrive Remote",
             "gpu_count": gpu_count,
             "alert_rules": alert_count,
             "monitoring_active": self.monitoring.is_running(),

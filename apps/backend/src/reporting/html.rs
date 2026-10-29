@@ -46,7 +46,7 @@ impl HtmlReport {
 </head>
 <body>
 {body}
-<div class="footer">GPUControl Pro — Performance Report</div>
+<div class="footer">OverDrive — Performance Report</div>
 </body>
 </html>"#,
             title = Self::escape(title),

@@ -55,7 +55,7 @@ export function OverlayHud() {
       }
     };
     poll();
-    const id = setInterval(poll, 1000);
+    const id = setInterval(poll, 250);
     return () => {
       cancelled = true;
       clearInterval(id);

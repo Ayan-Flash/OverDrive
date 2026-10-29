@@ -17,12 +17,12 @@ impl Database {
             Some(p) => p.to_path_buf(),
             None => dirs_next::config_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
-                .join("gpucontrol-pro"),
+                .join("overdrive"),
         };
 
         std::fs::create_dir_all(&data_dir).ok();
 
-        let db_path = data_dir.join("gpucontrol.db");
+        let db_path = data_dir.join("overdrive.db");
         let conn = Connection::open(&db_path)?;
 
         conn.execute_batch("PRAGMA journal_mode=WAL;")?;

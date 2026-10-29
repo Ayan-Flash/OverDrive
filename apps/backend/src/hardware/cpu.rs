@@ -1,6 +1,6 @@
 //! Real CPU telemetry via the `sysinfo` crate.
 //!
-//! Provides live, accurate readings for the Armoury-Crate-style dashboard:
+//! Provides live, accurate readings for the OverDrive dashboard:
 //! CPU model/vendor, physical & logical core counts, per-core current
 //! frequency (MHz), per-core & package utilization, and — where the OS
 //! exposes a thermal sensor — package temperature.
@@ -17,7 +17,8 @@
 //! - **Voltage** is not exposed by the OS without a kernel-mode sensor driver
 //!   (e.g. LibreHardwareMonitor / WinRing0), so it is reported as `None`.
 
-use std::sync::Mutex;
+use std::sync::{Mutex, RwLock};
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use sysinfo::{Components, System};
@@ -25,7 +26,6 @@ use sysinfo::{Components, System};
 use super::cpu_temperature::CpuCoreTemperature;
 #[cfg(windows)]
 use super::cpu_temperature::CpuTemperatureReader;
-#[cfg(not(windows))]
 use super::cpu_temperature::CpuTemperatureReadings;
 use super::cpu_voltage::VoltageReader;
 
@@ -52,7 +52,7 @@ pub struct CpuCoreSample {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CpuSample {
     pub timestamp: i64,
-    /// Package frequency shown in the big gauge (MHz) — the busiest core's clock.
+    /// Package frequency shown in the big gauge (MHz) — the fastest core's clock.
     pub frequency_mhz: u64,
     /// Gauge scale ceiling (MHz).
     pub max_frequency_mhz: u64,
@@ -69,9 +69,26 @@ pub struct CpuMonitor {
     info: CpuInfo,
     /// Rate-limited WMI voltage reader (updated every ~3s).
     voltage: VoltageReader,
-    /// Rate-limited CPU sensor reader (updated every ~3s).
+    /// Rate-limited CPU sensor reader (updated every second when available).
     #[cfg(windows)]
     temperature: CpuTemperatureReader,
+    /// Most recent sample produced by the ~1 Hz background sampler thread (see
+    /// `record_latest`/`sample_cached`). Display fetches read this cached value
+    /// instead of changing the native usage measurement window.
+    latest: RwLock<Option<CpuSample>>,
+    sensors: RwLock<Option<SensorSnapshot>>,
+}
+
+struct SensorSnapshot {
+    temperature: CpuTemperatureReadings,
+    voltage: Option<f64>,
+    captured_at: Instant,
+}
+
+impl SensorSnapshot {
+    fn fresh(&self) -> bool {
+        self.captured_at.elapsed() < Duration::from_secs(10)
+    }
 }
 
 struct Inner {
@@ -135,6 +152,8 @@ impl CpuMonitor {
             voltage: VoltageReader::new(),
             #[cfg(windows)]
             temperature: CpuTemperatureReader::new(),
+            latest: RwLock::new(None),
+            sensors: RwLock::new(None),
         }
     }
 
@@ -143,17 +162,46 @@ impl CpuMonitor {
         self.info.clone()
     }
 
-    /// Take a fresh live sample. Expected to be polled ~once per second; the
-    /// interval between calls is what CPU usage percentages are computed over.
-    pub fn sample(&self) -> CpuSample {
-        // Read external rate-limited sensors outside the inner mutex lock so
-        // sample() never blocks on sensor query subprocesses.
+    /// Live-read a full sample and store it as the sampler's latest output.
+    /// Called by the ~1 Hz background sampler thread. Must NOT be called at
+    /// higher rates: CPU usage percentages are computed over the interval
+    /// between calls, so rapid calls would ruin the measurement window.
+    pub fn record_latest(&self) {
+        let sample = self.sample();
+        *self.latest.write().unwrap_or_else(|e| e.into_inner()) = Some(sample);
+    }
+
+    /// Returns the sampler's most recent sample (a cheap clone — no sensor
+    /// traffic). Falls back to a full live read when the sampler thread has
+    /// not produced a sample yet.
+    pub fn sample_cached(&self) -> CpuSample {
+        let cached = self.latest.read().unwrap_or_else(|e| e.into_inner()).clone();
+        cached.unwrap_or_else(|| self.sample())
+    }
+
+    /// Refresh slow driver/WMI sensors on their own worker. Never hold the
+    /// snapshot lock during I/O: native utilization keeps updating if a provider stalls.
+    pub fn refresh_sensors(&self) {
         #[cfg(windows)]
         let temperature_readings = self.temperature.read();
         #[cfg(not(windows))]
         let temperature_readings = CpuTemperatureReadings::default();
 
         let voltage_volts = self.voltage.read().vcore;
+        *self.sensors.write().unwrap_or_else(|e| e.into_inner()) = Some(SensorSnapshot {
+            temperature: temperature_readings,
+            voltage: voltage_volts,
+            captured_at: Instant::now(),
+        });
+    }
+
+    /// Take a fresh native sample without waiting for driver/WMI sensor queries.
+    pub fn sample(&self) -> CpuSample {
+        let (temperature_readings, voltage_volts) = self.sensors
+            .read().unwrap_or_else(|e| e.into_inner())
+            .as_ref().filter(|snapshot| snapshot.fresh())
+            .map(|snapshot| (snapshot.temperature.clone(), snapshot.voltage))
+            .unwrap_or_default();
 
         let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         inner.sys.refresh_cpu_all();
@@ -210,8 +258,7 @@ impl CpuMonitor {
             })
             .collect();
 
-        // The busiest core's clock is the most representative "current speed"
-        // for the package (this matches how Armoury Crate reports the big number).
+        // The dashboard explicitly labels this as the fastest core clock.
         let native_package_freq = cores.iter().map(|c| c.frequency_mhz).max().unwrap_or(0);
         // CurrentMhz from CallNtPowerInformation is an OS throttle estimate on
         // modern Windows builds and can stay at the CPU's base clock. Prefer
@@ -443,6 +490,26 @@ fn check_elevation() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn slow_sensor_cache_expires_without_stopping_native_samples() {
+        let monitor = CpuMonitor::new();
+        *monitor.sensors.write().unwrap() = Some(SensorSnapshot {
+            temperature: CpuTemperatureReadings {
+                package_celsius: Some(61.0),
+                ..Default::default()
+            },
+            voltage: Some(1.2),
+            captured_at: Instant::now(),
+        });
+        assert_eq!(monitor.sample().temperature_celsius, Some(61.0));
+        monitor.sensors.write().unwrap().as_mut().unwrap().captured_at =
+            Instant::now() - Duration::from_secs(11);
+        let fresh_native_sample = monitor.sample();
+        assert_eq!(fresh_native_sample.voltage_volts, None);
+        assert!(fresh_native_sample.frequency_mhz > 0);
+        assert!(!fresh_native_sample.cores.is_empty());
+    }
 
     #[test]
     fn test_cpu_monitor_info_and_sample() {

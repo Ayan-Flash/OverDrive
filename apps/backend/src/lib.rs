@@ -1,4 +1,4 @@
-// GPUControl Pro is under active development: many modules expose API that is
+// OverDrive is under active development: many modules expose API that is
 // wired incrementally (backup/marketplace/enterprise/AI tuning surfaces). Allow
 // dead_code so that in-progress API doesn't bury actionable warnings. The large
 // command signatures and boxed trait maps are inherent to the IPC design.
@@ -96,19 +96,22 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 #[tauri::command]
 fn get_app_info() -> serde_json::Value {
     serde_json::json!({
-        "name": "GPUControl Pro",
+        "name": "OverDrive",
         "version": env!("CARGO_PKG_VERSION"),
         "platform": std::env::consts::OS,
     })
 }
 
-/// Entry point for GPUControl Pro. Lives in the library crate so the binary
+/// Entry point for OverDrive. Lives in the library crate so the binary
 /// stays a thin passthrough (see `main.rs`) — this avoids compiling every
 /// module twice and keeps the app mobile-entry-point compatible.
 pub fn run() {
     let _log_guard = utils::logging::init_logging();
 
     let app_state = Arc::new(commands::AppState::new());
+    // Captured before the builder chain so `.setup` can auto-start the
+    // background monitoring loop (telemetry + alerts duty) at launch.
+    let monitor_state = app_state.clone();
     tracing::info!("AppState initialized successfully");
 
     tracing::info!("Starting tauri::Builder");
@@ -116,7 +119,7 @@ pub fn run() {
         // Single-instance MUST be the first plugin registered. When a second
         // launch is attempted, this callback runs in the ALREADY-RUNNING
         // process and the new process exits immediately, so we never spawn
-        // duplicate GPUControl Pro processes. Instead we surface the existing
+        // duplicate OverDrive processes. Instead we surface the existing
         // window (restoring it from the tray / minimized state).
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             tracing::info!("Second instance attempted; focusing existing window");
@@ -136,18 +139,41 @@ pub fn run() {
         .manage(app_state)
         .manage(updater::UpdaterState::new())
         .manage(hardware::sensor_runtime::SensorRuntime::default())
-        .setup(|app| {
+        .setup(move |app| {
             let handle = app.handle().clone();
             updater::commands::spawn_auto_check(handle);
 
             app.state::<hardware::sensor_runtime::SensorRuntime>()
                 .start_background(app.handle().clone());
 
+            // Telemetry collection + alert duty start on launch, without
+            // waiting for any manual Settings action.
+            commands::start_background_loop(&monitor_state);
+
+            // Drive the custom fan curve from the background; it stays
+            // effective with the window hidden in the tray, like the classic
+            // GPU tuning tools. The engine skips ticks while disabled.
+            //
+            // Take the background-task handles straight from `monitor_state`
+            // (the `Arc<AppState>` captured before the builder — identical to
+            // what `.manage()` registered as `SharedState`). Calling
+            // `app.state::<AppState>()` here would panic at launch: Tauri
+            // manages `Arc<AppState>`, not the bare struct type.
+            commands::fan_curve_commands::spawn_fan_curve_task(
+                monitor_state.fan_curve.clone(),
+                monitor_state.monitoring.clone(),
+            );
+
+            // CPU sampling runs on a ~1 Hz background thread and display
+            // fetches read the cached sample, so CPU usage keeps its ~1 s
+            // measurement window no matter how fast the UI polls.
+            commands::spawn_cpu_sampler(monitor_state.cpu.clone());
+
             setup_tray(app)?;
 
             std::thread::spawn(move || {
                 std::thread::sleep(std::time::Duration::from_secs(1));
-                tracing::info!("GPUControl Pro started (PID: {})", std::process::id());
+                tracing::info!("OverDrive started (PID: {})", std::process::id());
             });
 
             // Explicitly show and focus the main window
@@ -169,7 +195,7 @@ pub fn run() {
                 });
             }
 
-            tracing::info!("GPUControl Pro initialized");
+            tracing::info!("OverDrive initialized");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -180,6 +206,7 @@ pub fn run() {
             commands::get_storage_telemetry,
             commands::list_gpus,
             commands::get_gpu_data,
+            commands::get_gpu_sample,
             commands::get_gpu_history,
             commands::get_gpu_control_state,
             commands::set_fan_speed,
@@ -187,6 +214,11 @@ pub fn run() {
             commands::set_memory_clock_offset,
             commands::set_power_limit,
             commands::set_voltage_offset,
+            commands::set_fan_control_automatic,
+            commands::reset_gpu_controls,
+            commands::get_fan_curve,
+            commands::set_fan_curve,
+            commands::set_fan_curve_enabled,
             commands::start_monitoring,
             commands::stop_monitoring,
             commands::is_monitoring_running,
@@ -195,6 +227,11 @@ pub fn run() {
             commands::load_profiles,
             commands::delete_profile,
             commands::apply_profile,
+            commands::apply_control_snapshot,
+            commands::get_quick_slots,
+            commands::quick_save_slot,
+            commands::quick_load_slot,
+            commands::quick_delete_slot,
             commands::get_alert_rules,
             commands::get_alert_rules_for_gpu,
             commands::add_alert_rule,

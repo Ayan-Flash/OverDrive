@@ -24,7 +24,8 @@ impl MonitoringEngine {
         let gpus = collector.enumerate_gpus();
         let mut buffers = HashMap::new();
         for gpu in &gpus {
-            buffers.insert(gpu.id.clone(), RingBuffer::new(3600));
+            // Sized for ~1 hour of samples at the 250 ms collection cadence.
+            buffers.insert(gpu.id.clone(), RingBuffer::new(14400));
         }
 
         info!("Monitoring engine initialized with {} GPU(s)", gpus.len());
@@ -139,6 +140,38 @@ impl MonitoringEngine {
             .set_voltage_offset(gpu_id, offset_mv)
     }
 
+    /// Hand the fans back to the driver's automatic policy.
+    pub fn set_fan_control_automatic(&self, gpu_id: &str) -> Result<(), GpuProviderError> {
+        self.collector
+            .provider_ref()
+            .set_fan_control_automatic(gpu_id)
+    }
+
+    /// Restore driver defaults (zero offsets, default power limit, automatic
+    /// fan control).
+    pub fn reset_controls(&self, gpu_id: &str) -> Result<(), GpuProviderError> {
+        self.collector.provider_ref().reset_controls(gpu_id)
+    }
+
+    /// Reads a full sample without touching the sample buffers, alert hooks,
+    /// or the persistence layer. Powers the fast UI polling path (`get_gpu_sample`):
+    /// the display fetches live data at its own rate while recording stays
+    /// owned by the background loop.
+    pub fn probe_sample(&self, gpu_id: &str) -> Option<GpuSample> {
+        self.collector.provider_ref().read_sample(gpu_id).ok()
+    }
+
+    /// Reads a temperature without touching the sample buffers, alert hooks,
+    /// or the persistence layer. Used by the fan curve task so curve ticks
+    /// never distort the recorded monitoring history.
+    pub fn probe_temperature(&self, gpu_id: &str) -> Option<f64> {
+        self.collector
+            .provider_ref()
+            .read_sample(gpu_id)
+            .ok()
+            .and_then(|sample| sample.temperature_celsius)
+    }
+
     pub fn export_csv(&self, gpu_id: &str, count: usize) -> String {
         let samples = self.get_history(gpu_id, count);
         let refs: Vec<&GpuSample> = samples.iter().collect();
@@ -157,5 +190,129 @@ impl MonitoringEngine {
 
     pub fn is_running(&self) -> bool {
         self.running.load(Ordering::Relaxed)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::hardware::GpuProviderError;
+    use std::sync::atomic::AtomicU32;
+    use std::sync::Arc;
+
+    /// Deterministic provider reporting one GPU with a fixed sample, and it
+    /// counts how many times `read_sample` is invoked.
+    struct FakeProvider {
+        reads: AtomicU32,
+    }
+
+    impl FakeProvider {
+        fn sample(gpu_id: &str) -> GpuSample {
+            GpuSample {
+                gpu_id: gpu_id.to_string(),
+                timestamp: 0,
+                temperature_celsius: Some(55.0),
+                core_clock_mhz: Some(3000.0),
+                memory_clock_mhz: Some(8000.0),
+                memory_used_mb: Some(1024),
+                memory_total_mb: Some(8192),
+                fan_speed_percent: Some(40.0),
+                fan_rpm: None,
+                power_watts: Some(120.0),
+                max_power_limit_watts: None,
+                core_voltage_mv: None,
+                core_utilization_percent: Some(30.0),
+                memory_utilization_percent: None,
+            }
+        }
+    }
+
+    impl GpuProvider for FakeProvider {
+        fn name(&self) -> &str {
+            "fake"
+        }
+
+        fn enumerate(&self) -> Result<Vec<GpuIdentity>, GpuProviderError> {
+            Ok(vec![GpuIdentity {
+                id: "gpu-0".into(),
+                name: "Fake GPU".into(),
+                vendor: crate::hardware::GpuVendor::Unknown,
+                index: 0,
+                memory_total_mb: Some(8192),
+            }])
+        }
+
+        fn read_sample(&self, gpu_id: &str) -> Result<GpuSample, GpuProviderError> {
+            self.reads.fetch_add(1, Ordering::Relaxed);
+            Ok(Self::sample(gpu_id))
+        }
+
+        fn read_control_state(&self, _gpu_id: &str) -> Result<GpuControlState, GpuProviderError> {
+            Ok(GpuControlState::unavailable("gpu-0"))
+        }
+
+        fn set_fan_speed(&self, _gpu_id: &str, _percent: f64) -> Result<(), GpuProviderError> {
+            Err(GpuProviderError::NotAvailable("fake provider".into()))
+        }
+
+        fn set_core_clock_offset(&self, _gpu_id: &str, _offset_mhz: i32) -> Result<(), GpuProviderError> {
+            Err(GpuProviderError::NotAvailable("fake provider".into()))
+        }
+
+        fn set_memory_clock_offset(&self, _gpu_id: &str, _offset_mhz: i32) -> Result<(), GpuProviderError> {
+            Err(GpuProviderError::NotAvailable("fake provider".into()))
+        }
+
+        fn set_power_limit(&self, _gpu_id: &str, _percent: f64) -> Result<(), GpuProviderError> {
+            Err(GpuProviderError::NotAvailable("fake provider".into()))
+        }
+
+        fn set_voltage_offset(&self, _gpu_id: &str, _offset_mv: i32) -> Result<(), GpuProviderError> {
+            Err(GpuProviderError::NotAvailable("fake provider".into()))
+        }
+
+        fn set_fan_control_automatic(&self, _gpu_id: &str) -> Result<(), GpuProviderError> {
+            Err(GpuProviderError::NotAvailable("fake provider".into()))
+        }
+
+        fn reset_controls(&self, _gpu_id: &str) -> Result<(), GpuProviderError> {
+            Err(GpuProviderError::NotAvailable("fake provider".into()))
+        }
+    }
+
+    #[test]
+    fn engine_probe_sample_is_side_effect_free_but_collect_once_records() {
+        let engine = MonitoringEngine::new(Box::new(FakeProvider {
+            reads: AtomicU32::new(0),
+        }));
+        let hook_calls = Arc::new(AtomicU32::new(0));
+
+        // The fast-path probe returns the value, triggers hooks exactly zero
+        // times and does not extend the buffer history.
+        let sample = engine
+            .probe_sample("gpu-0")
+            .expect("probe returns the fake sample");
+        assert_eq!(sample.temperature_celsius, Some(55.0));
+        assert!(
+            engine.get_latest("gpu-0").is_none(),
+            "probe must not push into the ring buffer"
+        );
+        assert_eq!(hook_calls.load(Ordering::Relaxed), 0);
+
+        // A recorded collection triggers the hook chain and the buffer.
+        let counted = Arc::clone(&hook_calls);
+        engine.add_sample_hook(move |_sample| {
+            counted.fetch_add(1, Ordering::Relaxed);
+        });
+        engine.collect_once("gpu-0");
+        assert_eq!(
+            hook_calls.load(Ordering::Relaxed),
+            1,
+            "collect_once must feed the persistence hooks"
+        );
+        assert!(
+            engine.get_latest("gpu-0").is_some(),
+            "collect_once must push into the ring buffer"
+        );
     }
 }

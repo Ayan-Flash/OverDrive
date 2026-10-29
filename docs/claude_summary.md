@@ -1,6 +1,6 @@
 # Claude Handoff Summary
 
-This document is a compact handoff for the current state of the GPUControl Pro workspace.
+This document is a compact handoff for the current state of the OverDrive workspace.
 
 ## Current Project State
 

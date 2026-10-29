@@ -9,7 +9,7 @@ function formatDate(ts: number) {
 export function EnterprisePage() {
   const { config, policies, loading, error, fetchConfig, saveConfig, fetchPolicies, createPolicy, deletePolicy, togglePolicy, clearError } = useEnterpriseStore();
 
-  const [appName, setAppName] = useState('GPUControl Pro');
+  const [appName, setAppName] = useState('OverDrive');
   const [primaryColor, setPrimaryColor] = useState('#f04747');
   const [showBranding, setShowBranding] = useState(true);
   const [policiesEnabled, setPoliciesEnabled] = useState(true);

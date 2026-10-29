@@ -49,7 +49,7 @@ impl SyncStore {
     pub fn new() -> Self {
         let path = dirs_next::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("gpucontrol-pro")
+            .join("overdrive")
             .join("sync_state.json");
         Self { path }
     }

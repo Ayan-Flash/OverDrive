@@ -5,4 +5,4 @@ export const MONITORING_DEFAULTS = {
   RETENTION_HOURS: 24,
 } as const;
 export const APP_VERSION = '0.1.0';
-export const APP_NAME = 'GPUControl Pro';
+export const APP_NAME = 'OverDrive';

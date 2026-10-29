@@ -1,9 +1,9 @@
-# GPUControl Pro
+# OverDrive
 
 > **Professional GPU Monitoring & Control for Windows**  
 > Enterprise-grade desktop application inspired by MSI Afterburner, built with modern architecture and production-quality code.
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yourorg/gpucontrol-pro/releases)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yourorg/overdrive/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.70+-orange)](https://www.rust-lang.org)
 [![Tauri](https://img.shields.io/badge/tauri-v2.0+-blue)](https://tauri.app)
@@ -14,7 +14,7 @@
 
 ## 🎯 Project Overview
 
-GPUControl Pro is a professional desktop application that provides real-time GPU monitoring, overclocking capabilities, fan control, and performance optimization for Windows systems. Built from the ground up with enterprise-quality architecture, it serves as a modern alternative to legacy GPU control utilities.
+OverDrive is a professional desktop application that provides real-time GPU monitoring, overclocking capabilities, fan control, and performance optimization for Windows systems. Built from the ground up with enterprise-quality architecture, it serves as a modern alternative to legacy GPU control utilities.
 
 ### Vision
 
@@ -102,7 +102,7 @@ To create the most reliable, extensible, and user-friendly GPU monitoring and co
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         GPUControl Pro                              │
+│                         OverDrive                              │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  ┌─────────────────┐         ┌─────────────────┐                   │
@@ -142,7 +142,7 @@ To create the most reliable, extensible, and user-friendly GPU monitoring and co
 ## 📁 Folder Structure
 
 ```
-gpucontrol-pro/
+overdrive/
 ├── apps/                       # Applications
 │   ├── frontend/              # React application (UI)
 │   │   ├── src/
@@ -242,8 +242,8 @@ gpucontrol-pro/
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/yourorg/gpucontrol-pro.git
-cd gpucontrol-pro
+git clone https://github.com/yourorg/overdrive.git
+cd overdrive
 ```
 
 ### Install Dependencies
@@ -385,10 +385,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Contact
 
-- **Website**: [https://gpucontrol.pro](https://gpucontrol.pro)
-- **Email**: team@gpucontrol.pro
-- **Issues**: [GitHub Issues](https://github.com/yourorg/gpucontrol-pro/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourorg/gpucontrol-pro/discussions)
+- **Website**: [https://overdrive.app](https://overdrive.app)
+- **Email**: team@overdrive.app
+- **Issues**: [GitHub Issues](https://github.com/yourorg/overdrive/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourorg/overdrive/discussions)
 
 ---
 

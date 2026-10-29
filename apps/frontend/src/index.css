@@ -1,7 +1,7 @@
 /* Import Overdrive design system for dashboard */
 @import './styles/overdrive.css';
 @import './styles/overdrive-pages.css';
-@import './styles/gpucontrol-redesign.css';
+@import './styles/overdrive-base.css';
 
 @tailwind base;
 @tailwind components;

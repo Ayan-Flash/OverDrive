@@ -1,4 +1,4 @@
-# GPUControl Pro - Coding Guidelines
+# OverDrive - Coding Guidelines
 
 > **Version**: 1.0.0  
 > **Last Updated**: 2024  
@@ -25,7 +25,7 @@
 
 ## Overview
 
-These coding guidelines ensure consistency, maintainability, and quality across the GPUControl Pro codebase. All contributors must follow these guidelines.
+These coding guidelines ensure consistency, maintainability, and quality across the OverDrive codebase. All contributors must follow these guidelines.
 
 ---
 
@@ -42,7 +42,7 @@ These coding guidelines ensure consistency, maintainability, and quality across 
 
 | Item | Convention | Example |
 |------|-----------|---------|
-| Crates | `snake_case` | `gpucontrol_monitoring` |
+| Crates | `snake_case` | `overdrive_monitoring` |
 | Modules | `snake_case` | `gpu_driver` |
 | Types | `PascalCase` | `GpuInfo`, `MonitoringData` |
 | Functions | `snake_case` | `get_gpu_info`, `start_monitoring` |
@@ -300,7 +300,7 @@ getGpuData()
 ### Project Structure
 
 ```
-gpucontrol-pro/
+overdrive/
 ├── apps/
 │   ├── frontend/
 │   │   ├── src/

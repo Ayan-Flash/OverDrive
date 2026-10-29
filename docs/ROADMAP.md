@@ -1,4 +1,4 @@
-# GPUControl Pro - Development Roadmap
+# OverDrive - Development Roadmap
 
 > **Version**: 1.0.0  
 > **Last Updated**: 2024  
@@ -8,7 +8,7 @@
 
 ## Overview
 
-This roadmap outlines the development phases for GPUControl Pro, from initial architecture to full release. Each phase includes objectives, deliverables, success criteria, and estimated complexity.
+This roadmap outlines the development phases for OverDrive, from initial architecture to full release. Each phase includes objectives, deliverables, success criteria, and estimated complexity.
 
 ---
 
@@ -358,7 +358,7 @@ This roadmap outlines the development phases for GPUControl Pro, from initial ar
 
 - VR monitoring
 - Multi-monitor support
-- Custom fan curves
+- ~~Custom fan curves~~ (implemented on NVIDIA in phase 5; AMD/Intel fan curve support is still planned)
 - Performance profiles per application
 - Benchmark integration
 - Overclocking community profiles

@@ -111,7 +111,7 @@ impl BackupEngine {
         if scope.profiles {
             let dir = dirs_next::config_dir()
                 .unwrap_or_else(|| std::path::PathBuf::from("."))
-                .join("gpucontrol-pro")
+                .join("overdrive")
                 .join("profiles");
             let mut profiles_map = HashMap::new();
             if dir.exists() {
@@ -143,7 +143,7 @@ impl BackupEngine {
         if scope.alert_rules {
             let store_path = dirs_next::config_dir()
                 .unwrap_or_else(|| std::path::PathBuf::from("."))
-                .join("gpucontrol-pro")
+                .join("overdrive")
                 .join("alert_rules.json");
             if let Ok(content) = fs::read_to_string(&store_path) {
                 bundle.alert_rules = serde_json::from_str::<Value>(&content).ok();
@@ -166,7 +166,7 @@ impl BackupEngine {
             let _tuner_store = crate::ai::tuner::TuningStore::new();
             let path = dirs_next::config_dir()
                 .unwrap_or_else(|| std::path::PathBuf::from("."))
-                .join("gpucontrol-pro")
+                .join("overdrive")
                 .join("tuning_profiles.json");
             if let Ok(content) = fs::read_to_string(&path) {
                 bundle.tuning_profiles = serde_json::from_str::<Value>(&content).ok();
@@ -224,7 +224,7 @@ impl BackupEngine {
                 if let Some(map) = profiles_val.as_object() {
                     let profiles_dir = dirs_next::config_dir()
                         .unwrap_or_else(|| std::path::PathBuf::from("."))
-                        .join("gpucontrol-pro")
+                        .join("overdrive")
                         .join("profiles");
                     if !profiles_dir.exists() {
                         let _ = fs::create_dir_all(&profiles_dir);

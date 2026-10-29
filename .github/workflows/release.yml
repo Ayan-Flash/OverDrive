@@ -1,4 +1,4 @@
-# GPUControl Pro Release Pipeline
+# OverDrive Release Pipeline
 # Builds, signs, and publishes installer + update metadata
 
 name: Release
@@ -91,9 +91,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: GPUControl Pro ${{ steps.version.outputs.version }}
+          name: OverDrive ${{ steps.version.outputs.version }}
           body: |
-            ## GPUControl Pro ${{ steps.version.outputs.version }}
+            ## OverDrive ${{ steps.version.outputs.version }}
 
             ### Changelog
             - See commits for details

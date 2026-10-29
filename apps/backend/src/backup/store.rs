@@ -19,7 +19,7 @@ impl BackupStore {
     pub fn new() -> Self {
         let path = dirs_next::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("gpucontrol-pro")
+            .join("overdrive")
             .join("backups");
         if !path.exists() {
             let _ = fs::create_dir_all(&path);

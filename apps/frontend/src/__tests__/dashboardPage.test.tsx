@@ -1,12 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DashboardPage } from '../pages/DashboardPage';
+import { CpuActivity, DashboardPage } from '../pages/DashboardPage';
 import { useAlertStore } from '../stores/alertStore';
 import { useGpuStore } from '../stores/gpuStore';
 import { useUiStore } from '../stores/uiStore';
 
-vi.mock('../components/armoury/useCpuData', () => ({
+vi.mock('../components/overdrive/useCpuData', () => ({
   useCpuData: () => ({
     model: 'CPU',
     vendor: '',
@@ -105,5 +105,32 @@ describe('Dashboard overview', () => {
       expect(useUiStore.getState().currentPage).toBe(destination);
     }
     unmount();
+  });
+});
+
+describe('CPU activity history', () => {
+  it('plots real zero and changing samples, and clears history across a connection gap', () => {
+    const { container, rerender } = render(<CpuActivity usage={0} sampledAt={1000} available />);
+    expect(screen.getByRole('img', { name: /Current 0.0 percent/ })).toBeInTheDocument();
+    expect(container.querySelector('polyline')).not.toBeInTheDocument();
+    rerender(<CpuActivity usage={75} sampledAt={2000} available />);
+    expect(container.querySelector('polyline')).toBeInTheDocument();
+    expect(screen.getByText('Peak 75% · Now')).toBeInTheDocument();
+
+    rerender(<CpuActivity usage={75} sampledAt={2000} available={false} />);
+    expect(screen.getByRole('img', { name: 'CPU utilization history unavailable' })).toBeInTheDocument();
+    expect(container.querySelector('polyline')).not.toBeInTheDocument();
+    rerender(<CpuActivity usage={20} sampledAt={3000} available />);
+    expect(container.querySelector('polyline')).not.toBeInTheDocument();
+    expect(screen.getByText('Peak 20% · Now')).toBeInTheDocument();
+  });
+
+  it('keeps equal utilization samples when their timestamps advance and expires old peaks', () => {
+    const { container, rerender } = render(<CpuActivity usage={80} sampledAt={1000} available />);
+    rerender(<CpuActivity usage={80} sampledAt={2000} available />);
+    expect(container.querySelector('polyline')).toBeInTheDocument();
+    rerender(<CpuActivity usage={10} sampledAt={63000} available />);
+    expect(container.querySelector('polyline')).not.toBeInTheDocument();
+    expect(screen.getByText('Peak 10% · Now')).toBeInTheDocument();
   });
 });

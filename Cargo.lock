@@ -1525,38 +1525,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gpucontrol-pro-backend"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "dirs-next",
- "libloading 0.8.9",
- "rand 0.8.6",
- "reqwest 0.12.28",
- "rusqlite",
- "serde",
- "serde_json",
- "sysinfo",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-notification",
- "tauri-plugin-process",
- "tauri-plugin-shell",
- "tauri-plugin-single-instance",
- "tauri-plugin-updater",
- "thiserror 1.0.69",
- "tiny_http",
- "tokio",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
 name = "gtk"
 version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2712,6 +2680,38 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "overdrive-backend"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "dirs-next",
+ "libloading 0.8.9",
+ "rand 0.8.6",
+ "reqwest 0.12.28",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sysinfo",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-notification",
+ "tauri-plugin-process",
+ "tauri-plugin-shell",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-updater",
+ "thiserror 1.0.69",
+ "tiny_http",
+ "tokio",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]

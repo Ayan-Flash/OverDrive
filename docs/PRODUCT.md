@@ -1,4 +1,4 @@
-# GPUControl Pro — Product Documentation
+# OverDrive — Product Documentation
 
 > **Version**: 0.2.0
 > **Last Updated**: 2026-07-17
@@ -23,7 +23,7 @@
 
 ## Product Vision
 
-GPUControl Pro is a professional-grade desktop application for real-time GPU monitoring, overclocking, and performance optimization on Windows. It aims to be the open, extensible alternative to MSI Afterburner — combining enterprise-grade architecture with a modern gaming aesthetic.
+OverDrive is a professional-grade desktop application for real-time GPU monitoring, overclocking, and performance optimization on Windows. It aims to be the open, extensible alternative to MSI Afterburner — combining enterprise-grade architecture with a modern gaming aesthetic.
 
 **Vision Statement:** *The definitive cross-vendor GPU command center — open, extensible, and built for performance enthusiasts, overclockers, and system integrators.*
 
@@ -36,7 +36,7 @@ The GPU tools landscape is dominated by vendor-locked utilities (NVIDIA Control 
 - Enterprise-grade features (remote monitoring, automation, group policies)
 - A well-maintained, open-source alternative with active development
 
-GPUControl Pro fills this gap with a clean-slate rewrite using modern technology (Tauri v2, React, Rust).
+OverDrive fills this gap with a clean-slate rewrite using modern technology (Tauri v2, React, Rust).
 
 ---
 
@@ -267,7 +267,7 @@ So that I can monitor without distraction
                     Feature Richness
                     ▲
                     │         MSI Afterburner
-                    │         GPUControl Pro ★
+                    │         OverDrive ★
                     │
                     │         ASUS GPU Tweak
                     │         EVGA Precision
@@ -279,7 +279,7 @@ So that I can monitor without distraction
                     └──────────────────────────► Modernity
 ```
 
-GPUControl Pro aims for the top-right quadrant: maximum feature richness with a modern architecture and active development cadence.
+OverDrive aims for the top-right quadrant: maximum feature richness with a modern architecture and active development cadence.
 
 ---
 
@@ -408,7 +408,7 @@ Assuming 100K downloads, 5% Pro conversion, 100 enterprise nodes:
 
 ## Technical Differentiators
 
-| Feature | GPUControl Pro | MSI Afterburner |
+| Feature | OverDrive | MSI Afterburner |
 |---------|---------------|-----------------|
 | Architecture | Tauri v2 + React + Rust | C++ Win32 |
 | Plugin System | Yes (trait-based, hot-loadable) | Limited (external) |

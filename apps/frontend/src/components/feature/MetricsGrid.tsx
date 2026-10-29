@@ -26,7 +26,7 @@ export function MetricsGrid({ aggregated }: MetricsGridProps) {
             </div>
             {stats ? (
               <>
-                <span className="metric-value text-text-primary text-lg">
+                <span className="metric-value text-lg text-text-primary">
                   {stats.current.toFixed(1)}
                   <span className="text-text-muted ml-0.5 text-[10px] font-normal">{metric.unit}</span>
                 </span>
@@ -37,7 +37,7 @@ export function MetricsGrid({ aggregated }: MetricsGridProps) {
                 </div>
               </>
             ) : (
-              <span className="text-text-dim text-sm">--</span>
+              <span className="text-sm text-text-dim">--</span>
             )}
           </div>
         );

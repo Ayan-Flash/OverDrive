@@ -1,10 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { CpuGauge } from '../components/armoury/CpuGauge';
-import { GpuPanel } from '../components/armoury/GpuPanel';
+import { CpuGauge } from '../components/overdrive/CpuGauge';
+import { GpuPanel } from '../components/overdrive/GpuPanel';
 
-describe('Armoury dashboard metrics', () => {
+describe('OverDrive dashboard metrics', () => {
   it('renders the CPU gauge MHz value directly', () => {
     render(<CpuGauge value={3801} maxValue={5000} />);
 

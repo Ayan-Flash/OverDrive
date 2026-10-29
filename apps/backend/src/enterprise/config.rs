@@ -13,7 +13,7 @@ pub struct BrandingConfig {
 impl Default for BrandingConfig {
     fn default() -> Self {
         Self {
-            app_name: "GPUControl Pro".into(),
+            app_name: "OverDrive".into(),
             logo_url: String::new(),
             primary_color: "#f04747".into(),
             secondary_color: "#1a1a2e".into(),

@@ -10,7 +10,7 @@ fn main() {
     // Catch any panic so the process exits silently instead of showing
     // a Windows abort dialog or allocating a console for stderr output.
     let result = std::panic::catch_unwind(|| {
-        gpucontrol_pro_lib::run();
+        overdrive_lib::run();
     });
 
     if let Err(_panic) = result {

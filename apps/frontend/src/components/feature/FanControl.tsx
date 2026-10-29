@@ -26,16 +26,16 @@ export function FanControl({ gpuId, currentSpeed }: FanControlProps) {
   return (
     <div className="card flex flex-col gap-3 p-4">
       <div className="flex items-center justify-between">
-        <span className="text-text-secondary text-xs font-medium uppercase tracking-wider">Fan Speed</span>
+        <span className="text-xs font-medium uppercase tracking-wider text-text-secondary">Fan Speed</span>
         <div className="flex items-center gap-2">
-          {applying && <span className="text-text-dim text-[10px]">Applying...</span>}
+          {applying && <span className="text-[10px] text-text-dim">Applying...</span>}
           <span className="metric-value text-base text-cyan-400">{formatFanSpeed(speed)}</span>
         </div>
       </div>
       <input type="range" min={0} max={100} step={1} value={speed}
         onChange={(e) => handleChange(Number(e.target.value))}
         className="slider-gpu" />
-      <div className="text-text-dim flex justify-between text-[10px]">
+      <div className="flex justify-between text-[10px] text-text-dim">
         <span>0%</span><span>50%</span><span>100%</span>
       </div>
     </div>

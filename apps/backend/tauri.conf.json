@@ -1,11 +1,11 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-cli/schema.json",
-  "productName": "GPUControl Pro",
-  "version": "0.2.0",
-  "identifier": "pro.gpucontrol.app",
+  "productName": "OverDrive",
+  "version": "0.2.1",
+  "identifier": "pro.overdrive.app",
   "build": {
-    "beforeBuildCommand": "pnpm --filter gpucontrol-pro-frontend build",
-    "beforeDevCommand": "pnpm --filter gpucontrol-pro-frontend dev",
+    "beforeBuildCommand": "pnpm --filter overdrive-frontend build",
+    "beforeDevCommand": "pnpm --filter overdrive-frontend dev",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../frontend/dist"
   },
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Armoury Crate",
+        "title": "OverDrive",
         "width": 1024,
         "height": 600,
         "minWidth": 960,
@@ -29,7 +29,7 @@
       "capabilities": [
         {
           "identifier": "default",
-          "description": "Default capability set for GPUControl Pro",
+          "description": "Default capability set for OverDrive",
           "windows": ["main", "overlay"],
           "permissions": [
             "core:default",
@@ -69,7 +69,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
     "resources": ["resources/LibreHardwareMonitor/"],
     "icon": [
       "icons/32x32.png",
@@ -79,7 +79,7 @@
     ],
     "windows": {
       "nsis": {
-        "installMode": "currentUser",
+        "installMode": "perMachine",
         "installerHooks": "hooks.nsh"
       }
     }
@@ -88,8 +88,8 @@
     "updater": {
       "pubkey": "YOUR_UPDATER_SIGNATURE_PUBKEY_HERE",
       "endpoints": [
-        "https://releases.gpucontrol.pro/{{target}}/{{current_version}}",
-        "https://github.com/gpucontrol-pro/gpucontrol-pro/releases/latest/download/update-{{target}}-{{current_version}}.json"
+        "https://releases.overdrive.app/{{target}}/{{current_version}}",
+        "https://github.com/overdrive-app/overdrive/releases/latest/download/update-{{target}}-{{current_version}}.json"
       ],
       "windows": {
         "installMode": "passive"

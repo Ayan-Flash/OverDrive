@@ -12,7 +12,7 @@ const groups: { label: string; items: { id: PageId; label: string }[] }[] = [
   { label: 'System', items: [{ id: 'alerts', label: 'Alerts' }, { id: 'backup', label: 'Backup & Restore' }, { id: 'enterprise', label: 'Enterprise' }, { id: 'settings', label: 'Settings' }] },
 ];
 
-export function ArmourySidebar() {
+export function OverdriveSidebar() {
   const currentPage = useUiStore((state) => state.currentPage);
   const navigateTo = useUiStore((state) => state.navigateTo);
 
@@ -27,7 +27,7 @@ export function ArmourySidebar() {
         </span>
         <span className="ac-sidebar__brand-copy">
           <strong>Overdrive</strong>
-          <small>GPU CONTROL</small>
+          <small>OVERDRIVE</small>
         </span>
       </div>
 

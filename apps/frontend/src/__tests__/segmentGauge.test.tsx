@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { SegmentGauge } from '../components/armoury/SegmentGauge';
+import { SegmentGauge } from '../components/overdrive/SegmentGauge';
 
 describe('SegmentGauge', () => {
   it('renders a segmented arc and preserves the metric unit', () => {

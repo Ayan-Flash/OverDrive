@@ -14,6 +14,7 @@ interface GpuStore {
 
   fetchGpus: () => Promise<void>;
   fetchData: (gpuId: string) => Promise<void>;
+  fetchLiveSample: (gpuId: string) => Promise<void>;
   fetchHistory: (gpuId: string, count?: number) => Promise<void>;
   fetchControlState: (gpuId: string) => Promise<void>;
   setFanSpeed: (gpuId: string, percent: number) => Promise<void>;
@@ -50,6 +51,19 @@ export const useGpuStore = create<GpuStore>((set, get) => ({
       data.set(gpuId, response.sample);
       const alerts = response.alerts as AlertEvent[];
       set({ currentData: data, alerts: [...get().alerts, ...alerts].slice(-100) });
+    } catch (err) {
+      set({ error: String(err) });
+    }
+  },
+
+  fetchLiveSample: async (gpuId: string) => {
+    // Fast display path backed by `get_gpu_sample`: a live driver probe with
+    // no recording or alert side effects, safe to poll at ~10 Hz.
+    try {
+      const sample = await gpuService.getSample(gpuId);
+      const data = new Map(get().currentData);
+      data.set(gpuId, sample);
+      set({ currentData: data });
     } catch (err) {
       set({ error: String(err) });
     }

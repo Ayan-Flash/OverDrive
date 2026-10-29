@@ -66,13 +66,39 @@ export interface MetricStats {
   avg: number | null;
 }
 
+export interface GpuControlCapabilities {
+  fan_control: boolean;
+  core_clock_offset: boolean;
+  memory_clock_offset: boolean;
+  power_limit: boolean;
+  voltage_offset: boolean;
+}
+
 export interface GpuControlState {
   gpu_id: string;
   target_fan_speed: number | null;
+  fan_control_automatic: boolean | null;
+  fan_count: number | null;
   core_clock_offset_mhz: number;
   memory_clock_offset_mhz: number;
   power_limit_percent: number | null;
+  power_limit_min_percent?: number | null;
+  power_limit_max_percent?: number | null;
   voltage_offset_mv: number;
+  core_clock_offset_limit_mhz?: number;
+  memory_clock_offset_limit_mhz?: number;
+  capabilities?: GpuControlCapabilities;
+}
+
+export interface FanCurvePoint {
+  temperature_celsius: number;
+  fan_percent: number;
+}
+
+export interface FanCurveView {
+  gpu_id: string;
+  enabled: boolean;
+  points: FanCurvePoint[];
 }
 
 export interface AlertRule {
@@ -102,6 +128,9 @@ export const gpuService = {
 
   getData: (gpuId: string) => invoke<GpuDataResponse>('get_gpu_data', { gpuId }),
 
+  /** Live-sample-only fast path (no recording, no alert evaluation). */
+  getSample: (gpuId: string) => invoke<GPUData>('get_gpu_sample', { gpuId }),
+
   getHistory: (gpuId: string, count: number) =>
     invoke<GpuHistoryResponse>('get_gpu_history', { gpuId, count }),
 
@@ -123,6 +152,21 @@ export const controlService = {
 
   setVoltageOffset: (gpuId: string, offsetMv: number) =>
     invoke<void>('set_voltage_offset', { gpuId, offsetMv }),
+
+  restoreFanControlAutomatic: (gpuId: string) =>
+    invoke<void>('set_fan_control_automatic', { gpuId }),
+
+  resetControls: (gpuId: string) => invoke<void>('reset_gpu_controls', { gpuId }),
+};
+
+export const fanCurveService = {
+  get: (gpuId: string) => invoke<FanCurveView>('get_fan_curve', { gpuId }),
+
+  set: (gpuId: string, points: FanCurvePoint[]) =>
+    invoke<void>('set_fan_curve', { gpuId, points }),
+
+  setEnabled: (gpuId: string, enabled: boolean) =>
+    invoke<FanCurveView>('set_fan_curve_enabled', { gpuId, enabled }),
 };
 
 export const monitoringService = {
@@ -131,6 +175,29 @@ export const monitoringService = {
   isRunning: () => invoke<boolean>('is_monitoring_running'),
   exportCsv: (gpuId: string, count: number) => invoke<string>('export_csv', { gpuId, count }),
 };
+
+export type SnapshotFanMode = 'automatic' | 'fixed' | 'curve';
+
+/** Full portable control state, captured or applied as one unit (the
+ *  MSI Afterburner profile model). Field names match the backend's serde
+ *  field names (snake_case over the wire). */
+export interface ControlSnapshot {
+  core_offset_mhz: number;
+  memory_offset_mhz: number;
+  voltage_offset_mv: number;
+  power_limit_percent?: number | null;
+  fan_mode?: SnapshotFanMode;
+  fixed_fan_percent?: number | null;
+  fan_curve?: FanCurvePoint[] | null;
+}
+
+export interface QuickSlotSummary {
+  slot: number;
+  name: string;
+  gpu_id: string;
+  saved_at: string;
+  snapshot: ControlSnapshot;
+}
 
 export const profileService = {
   save: (name: string, gpuId: string, coreOffset: number, memOffset: number, voltageOffset: number, fanSpeed: number, powerLimit: number) =>
@@ -142,6 +209,19 @@ export const profileService = {
 
   apply: (gpuId: string, coreOffset: number, memOffset: number, voltageOffset: number, fanSpeed: number, powerLimit: number) =>
     invoke<void>('apply_profile', { gpuId, coreOffset, memOffset, voltageOffset, fanSpeed, powerLimit }),
+
+  /** Apply a full control snapshot (offsets + power + fan mode) to a GPU. */
+  applySnapshot: (gpuId: string, snapshot: ControlSnapshot) =>
+    invoke<void>('apply_control_snapshot', { gpuId, snapshot }),
+
+  slots: () => invoke<(QuickSlotSummary | null)[]>('get_quick_slots'),
+
+  saveSlot: (gpuId: string, slot: number, snapshot: ControlSnapshot, name?: string) =>
+    invoke<void>('quick_save_slot', { gpuId, slot, snapshot, name }),
+
+  loadSlot: (gpuId: string, slot: number) => invoke<void>('quick_load_slot', { gpuId, slot }),
+
+  clearSlot: (slot: number) => invoke<void>('quick_delete_slot', { slot }),
 };
 
 export const alertService = {

@@ -21,7 +21,7 @@ impl EnterpriseStore {
     pub fn new() -> Self {
         let base = dirs_next::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("gpucontrol-pro")
+            .join("overdrive")
             .join("enterprise");
         let config_path = base.join("config.json");
         let policies_dir = base.join("policies");

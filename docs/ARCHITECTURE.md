@@ -1,4 +1,4 @@
-# GPUControl Pro - Architecture Documentation
+# OverDrive - Architecture Documentation
 
 > **Version**: 1.0.0  
 > **Last Updated**: 2024  
@@ -26,7 +26,7 @@
 
 ## Overview
 
-GPUControl Pro follows a **layered architecture** with strict separation between the user interface and hardware access layers. This architecture ensures:
+OverDrive follows a **layered architecture** with strict separation between the user interface and hardware access layers. This architecture ensures:
 
 - **Security**: Hardware access is sandboxed in the backend
 - **Maintainability**: Clear boundaries between layers
@@ -47,7 +47,7 @@ GPUControl Pro follows a **layered architecture** with strict separation between
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                         GPUControl Pro Application                      │
+│                         OverDrive Application                      │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  ┌───────────────────────────────────────────────────────────────────┐  │

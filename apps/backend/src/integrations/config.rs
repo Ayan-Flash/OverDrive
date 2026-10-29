@@ -21,7 +21,7 @@ impl Default for IntegrationConfig {
     fn default() -> Self {
         Self {
             discord_webhook_url: String::new(),
-            discord_username: "GPUControl Pro".into(),
+            discord_username: "OverDrive".into(),
             discord_avatar_url: String::new(),
             discord_notify_on_alert: true,
             discord_notify_on_high_temp: true,
@@ -47,7 +47,7 @@ impl IntegrationStore {
     pub fn new() -> Self {
         let path = dirs_next::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("gpucontrol-pro")
+            .join("overdrive")
             .join("integrations.json");
         Self { path }
     }

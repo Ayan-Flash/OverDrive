@@ -224,7 +224,7 @@ export function SyncPage() {
             </button>
           </div>
           <p style={{color: 'var(--ac-text-secondary)', fontSize: 12}}>
-            Run a local sync server to receive sync requests from other GPUControl Pro instances.
+            Run a local sync server to receive sync requests from other OverDrive instances.
             Other instances can sync to <code style={{color: 'var(--ac-accent-cyan-bright)'}}>http://localhost:9878/api/sync</code>
           </p>
           {serverRunning && (

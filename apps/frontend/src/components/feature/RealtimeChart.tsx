@@ -25,9 +25,9 @@ export function RealtimeChart({ data, metric, color, label, unit, height = 120 }
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="size-2 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}60` }} />
-          <span className="text-text-secondary text-xs font-medium uppercase tracking-wider">{label}</span>
+          <span className="text-xs font-medium uppercase tracking-wider text-text-secondary">{label}</span>
         </div>
-        <span className="metric-value text-text-primary text-sm">
+        <span className="metric-value text-sm text-text-primary">
           {displayValue}
           <span className="text-text-muted ml-0.5 text-[10px] font-normal">{unit}</span>
         </span>
@@ -57,7 +57,7 @@ export function RealtimeChart({ data, metric, color, label, unit, height = 120 }
           </ResponsiveContainer>
         ) : (
           <div className="flex h-full items-center justify-center">
-            <span className="text-text-dim text-[10px]">Waiting for data...</span>
+            <span className="text-[10px] text-text-dim">Waiting for data...</span>
           </div>
         )}
       </div>

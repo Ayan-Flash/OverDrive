@@ -1,5 +1,5 @@
-use gpucontrol_pro_lib::database::Database;
-use gpucontrol_pro_lib::hardware::GpuSample;
+use overdrive_lib::database::Database;
+use overdrive_lib::hardware::GpuSample;
 
 #[test]
 fn test_database_open_and_schema() {

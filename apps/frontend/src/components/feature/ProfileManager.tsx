@@ -74,13 +74,13 @@ export function ProfileManager() {
 
       <div className="flex flex-col gap-1.5">
         {profiles.length === 0 && (
-          <div className="text-text-dim py-4 text-center text-xs">No saved profiles</div>
+          <div className="py-4 text-center text-xs text-text-dim">No saved profiles</div>
         )}
         {profiles.map((profile, i) => (
           <div key={i}
-            className="bg-gpu-700/50 border-gpu-700 hover:bg-gpu-700 flex items-center justify-between rounded-lg border px-3 py-2.5 transition-colors">
+            className="flex items-center justify-between rounded-lg border border-gpu-700 bg-gpu-700/50 px-3 py-2.5 transition-colors hover:bg-gpu-700">
             <div className="flex flex-col">
-              <span className="text-text-primary text-sm font-medium">{profile.name}</span>
+              <span className="text-sm font-medium text-text-primary">{profile.name}</span>
               <span className="text-text-muted font-mono text-[10px]">
                 Core: {profile.core_offset}MHz | Mem: {profile.mem_offset}MHz
               </span>

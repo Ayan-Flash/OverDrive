@@ -27,6 +27,18 @@ pub fn get_gpu_data(state: State<'_, SharedState>, gpu_id: String) -> AppResult<
 }
 
 #[tauri::command]
+pub fn get_gpu_sample(state: State<'_, SharedState>, gpu_id: String) -> AppResult<serde_json::Value> {
+    // Live probe only: no buffer push, persistence hook, or alert evaluation.
+    // This is the fast path the UI polls (~10 Hz); recording and alerts stay
+    // owned by the background monitoring loop so its 1 Hz cadence is preserved.
+    let sample = state
+        .monitoring
+        .probe_sample(&gpu_id)
+        .ok_or_else(|| crate::utils::error::AppError::GpuNotFound(gpu_id.clone()))?;
+    Ok(serde_json::to_value(sample)?)
+}
+
+#[tauri::command]
 pub fn get_gpu_history(
     state: State<'_, SharedState>,
     gpu_id: String,

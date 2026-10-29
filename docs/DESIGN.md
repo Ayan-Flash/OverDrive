@@ -1,4 +1,4 @@
-# GPUControl Pro — Design Documentation
+# OverDrive — Design Documentation
 
 > **Version**: 0.2.0
 > **Last Updated**: 2026-07-17

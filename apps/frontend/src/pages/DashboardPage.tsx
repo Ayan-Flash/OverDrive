@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { alertService, monitoringService, overlayService } from '../services';
 import { useAlertStore, useGpuStore, useUiStore } from '../stores';
-import { useCpuData } from '../components/armoury/useCpuData';
-import { SegmentGauge } from '../components/armoury/SegmentGauge';
+import { useCpuData } from '../components/overdrive/useCpuData';
+import { SegmentGauge } from '../components/overdrive/SegmentGauge';
 import { systemTelemetryService, type RamTelemetry, type StorageTelemetry } from '../services/cpuService';
 
 type MonitoringState = 'checking' | 'running' | 'stopped' | 'unavailable';
@@ -19,6 +19,60 @@ function Metric({ label, value }: { label: string; value: string }) {
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  );
+}
+
+/** A trace of received samples only; missing data never becomes a zero reading. */
+export function CpuActivity({ usage, sampledAt, available }: {
+  usage: number;
+  sampledAt: number | null;
+  available: boolean;
+}) {
+  const [history, setHistory] = useState<{ at: number; value: number }[]>([]);
+  const live = available && sampledAt != null && Number.isFinite(usage);
+  useEffect(() => {
+    if (!available || sampledAt == null || !Number.isFinite(usage)) {
+      setHistory([]);
+      return;
+    }
+    setHistory((previous) => {
+      if (previous[previous.length - 1]?.at === sampledAt) return previous;
+      const recent = previous.filter((point) => point.at > sampledAt - 60000 && point.at < sampledAt);
+      return [...recent.slice(-119), { at: sampledAt, value: Math.min(100, Math.max(0, usage)) }];
+    });
+  }, [available, sampledAt, usage]);
+
+  const points = live ? history : [];
+  const end = points[points.length - 1]?.at ?? 0;
+  const coordinates = points.map((point) => ({
+    x: 300 - ((end - point.at) / 60000) * 300,
+    y: 58 - (point.value / 100) * 54,
+  }));
+  const last = coordinates[coordinates.length - 1];
+  const peak = points.length ? Math.max(...points.map((point) => point.value)) : null;
+
+  return (
+    <figure className="overview-cpu-activity">
+      <figcaption>
+        <span>CPU activity</span>
+        <span className={'overview-cpu-activity__status' + (live ? ' is-live' : '')}>
+          <i aria-hidden="true" />{live ? 'Live' : 'Waiting for readings'}
+        </span>
+      </figcaption>
+      <div className="overview-cpu-activity__plot">
+        <svg viewBox="0 0 304 62" preserveAspectRatio="none" role="img"
+          aria-label={live ? `CPU utilization history, last 60 seconds. Current ${usage.toFixed(1)} percent. Peak ${peak?.toFixed(1) ?? '—'} percent.` : 'CPU utilization history unavailable'}>
+          <path className="overview-cpu-activity__grid" d="M0 4H304M0 31H304M0 58H304M75 4V58M150 4V58M225 4V58" />
+          {coordinates.length > 1 && <polyline className="overview-cpu-activity__line"
+            points={coordinates.map(({ x, y }) => `${x},${y}`).join(' ')} />}
+          {last && <circle className="overview-cpu-activity__point" cx={last.x} cy={last.y} r="2.5" />}
+        </svg>
+        {!live && <span className="overview-cpu-activity__empty">History resumes when telemetry reconnects</span>}
+      </div>
+      <div className="overview-cpu-activity__axis">
+        <span>60 seconds</span><span>{peak == null ? '0–100%' : `Peak ${peak.toFixed(0)}%`} · Now</span>
+      </div>
+    </figure>
   );
 }
 
@@ -112,6 +166,7 @@ export function DashboardPage() {
   const currentData = useGpuStore((state) => state.currentData);
   const error = useGpuStore((state) => state.error);
   const fetchData = useGpuStore((state) => state.fetchData);
+  const fetchLiveSample = useGpuStore((state) => state.fetchLiveSample);
   const selectedGpuId = useUiStore((state) => state.selectedGpuId);
   const setSelectedGpu = useUiStore((state) => state.setSelectedGpu);
   const navigateTo = useUiStore((state) => state.navigateTo);
@@ -131,17 +186,19 @@ export function DashboardPage() {
     const readRam = () => void systemTelemetryService.getRam().then((v) => active && setRam(v)).catch(() => active && setRam(null));
     const readStorage = () => void systemTelemetryService.getStorage().then((v) => active && setStorage(v)).catch(() => active && setStorage(null));
     readRam(); readStorage();
-    const ramTimer = setInterval(readRam, 5000);
+    const ramTimer = setInterval(readRam, 1000);
     const storageTimer = setInterval(readStorage, 60000);
     return () => { active = false; clearInterval(ramTimer); clearInterval(storageTimer); };
   }, []);
 
   useEffect(() => {
     if (!selectedGpuId) return;
-    void fetchData(selectedGpuId);
-    const interval = setInterval(() => void fetchData(selectedGpuId), 1000);
+    void fetchLiveSample(selectedGpuId);
+    // ~10 Hz display refresh; each fetch is a sub-millisecond cached/live
+    // probe on the backend, so this adds effectively no battery/CPU load.
+    const interval = setInterval(() => void fetchLiveSample(selectedGpuId), 100);
     return () => clearInterval(interval);
-  }, [selectedGpuId, fetchData]);
+  }, [selectedGpuId, fetchLiveSample]);
 
 
   useEffect(() => {
@@ -330,8 +387,12 @@ export function DashboardPage() {
                     }
                   />
                 </div>
-                {Boolean(cpu.coreTemperatures && cpu.coreTemperatures.length > 0) && (
-                  <div style={{ marginTop: 14 }}>
+                <CpuActivity usage={cpu.usage} sampledAt={cpu.sampledAt} available={cpuHasData} />
+                {cpuHasData && cpuTemperature == null && (
+                  <p className="overview-cpu-sensor-note">CPU usage is live. Temperature is waiting for hardware sensor access.</p>
+                )}
+                {Boolean(cpuHasData && cpu.coreTemperatures && cpu.coreTemperatures.length > 0) && (
+                  <div className="overview-cpu-core-temperatures" style={{ marginTop: 14 }}>
                     <div style={{ marginBottom: 8, color: 'var(--ac-text-secondary)', fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                       CPU core temperatures
                     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { motion, useSpring, useTransform } from 'framer-motion';
+import type { MotionValue } from 'framer-motion';
 
 interface CpuGaugeProps {
   value: number;
@@ -28,7 +29,7 @@ function arcPath(r: number, a1: number, a2: number) {
 
 const FULL_ARC = arcPath(90, START, START + SWEEP);
 
-function Needle({ frac, color, isBoosting }: { frac: any; color: string; isBoosting: boolean }) {
+function Needle({ frac, color, isBoosting }: { frac: MotionValue<number>; color: string; isBoosting: boolean }) {
   const rotation = useTransform(frac, [0, 1], [START, START + SWEEP]);
 
   return (
@@ -60,7 +61,7 @@ function Needle({ frac, color, isBoosting }: { frac: any; color: string; isBoost
   );
 }
 
-function Tick({ i, frac, color }: { i: number; frac: any; color: string }) {
+function Tick({ i, frac, color }: { i: number; frac: MotionValue<number>; color: string }) {
   const isMajor = i % 12 === 0;
   const isMid = i % 6 === 0 && !isMajor;
   const len = isMajor ? 12 : isMid ? 8 : 5;
@@ -103,7 +104,7 @@ function Tick({ i, frac, color }: { i: number; frac: any; color: string }) {
   );
 }
 
-function Dot({ i, frac }: { i: number; frac: any }) {
+function Dot({ i, frac }: { i: number; frac: MotionValue<number> }) {
   const a = START + (i / 48) * SWEEP;
   const p = polar(102, a);
   const fill = useTransform(

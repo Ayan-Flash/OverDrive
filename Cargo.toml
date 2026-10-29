@@ -20,7 +20,7 @@ tracing-appender = "0.2"
 
 # Optimized release profile: smaller, faster binaries for distribution.
 # lto + single codegen-unit maximize cross-crate inlining; strip removes
-# debug symbols. This meaningfully shrinks the shipped GPUControl Pro binary
+# debug symbols. This meaningfully shrinks the shipped OverDrive binary
 # and improves runtime throughput of the monitoring loop.
 [profile.release]
 opt-level = 3

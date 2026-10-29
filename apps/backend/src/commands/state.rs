@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, RwLock};
 
 use crate::database::Database;
@@ -14,7 +15,8 @@ pub struct AppState {
     pub obs_source: crate::integrations::obs::ObsSource,
     pub sync_server: crate::sync::SyncServer,
     pub smart_alerts: Arc<crate::ai::SmartAlertManager>,
-    pub cpu: crate::hardware::cpu::CpuMonitor,
+    pub cpu: Arc<crate::hardware::cpu::CpuMonitor>,
+    pub fan_curve: Arc<crate::hardware::FanCurveEngine>,
     pub db: Arc<Database>,
 }
 
@@ -53,15 +55,33 @@ impl AppState {
         }
         tracing::info!("AppState::new: Default rules created");
 
+        // The fan curve engine binds to the first detected GPU; users can
+        // retarget it from the tuning page and it stays inert until enabled.
+        let fan_curve_target = monitoring
+            .gpus()
+            .first()
+            .map(|gpu| gpu.id.clone())
+            .unwrap_or_default();
+        let fan_curve = Arc::new(crate::hardware::FanCurveEngine::new(fan_curve_target));
+
         let overlay = OverlayController::new(monitoring.clone());
 
         let smart_alerts = Arc::new(crate::ai::SmartAlertManager::new());
+        // The sample hook pushes every collected sample into the loop's own
+        // consumers (smart alerts feed continuously), but the database record
+        // is throttled back to ~1 Hz (1 in 4 ticks at the 250 ms loop cadence)
+        // so the recorded history is unchanged while sampling runs faster.
         let sa = smart_alerts.clone();
+        let record_every = crate::commands::monitoring_commands::RECORD_EVERY_TICKS;
+        let record_tick = AtomicU32::new(0);
         let db_hook = db.clone();
         monitoring.add_sample_hook(move |sample| {
             sa.feed_sample(sample);
-            if let Err(e) = db_hook.insert_sample(sample) {
-                tracing::error!(error = %e, "Failed to persist sample");
+            let tick = record_tick.fetch_add(1, Ordering::Relaxed) + 1;
+            if tick % record_every == 0 {
+                if let Err(e) = db_hook.insert_sample(sample) {
+                    tracing::error!(error = %e, "Failed to persist sample");
+                }
             }
         });
 
@@ -73,7 +93,8 @@ impl AppState {
             obs_source: crate::integrations::obs::ObsSource::new(9877),
             sync_server: crate::sync::SyncServer::new(9878),
             smart_alerts,
-            cpu: crate::hardware::cpu::CpuMonitor::new(),
+            cpu: Arc::new(crate::hardware::cpu::CpuMonitor::new()),
+            fan_curve,
             db,
         }
     }

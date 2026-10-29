@@ -6,7 +6,7 @@ export function IntegrationsPage() {
   const { config, loading, testResult, testError, obsRunning, fetchConfig, saveConfig, testWebhook, sendReport, startObs, stopObs } = useIntegrationStore();
 
   const [webhookUrl, setWebhookUrl] = useState('');
-  const [username, setUsername] = useState('GPUControl Pro');
+  const [username, setUsername] = useState('OverDrive');
   const [notifyAlert, setNotifyAlert] = useState(true);
   const [notifyHighTemp, setNotifyHighTemp] = useState(true);
   const [highTempThreshold, setHighTempThreshold] = useState(80);
@@ -75,7 +75,7 @@ export function IntegrationsPage() {
       <div className="ac-page-header">
         <div className="ac-page-header__left">
           <h2 className="ac-page-header__title">Integrations</h2>
-          <p className="ac-page-header__desc">Connect GPUControl Pro to external services</p>
+          <p className="ac-page-header__desc">Connect OverDrive to external services</p>
         </div>
       </div>
 

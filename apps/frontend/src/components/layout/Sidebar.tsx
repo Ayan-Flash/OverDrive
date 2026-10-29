@@ -1,3 +1,3 @@
-// Legacy Sidebar — replaced by ArmourySidebar in the Overdrive design system.
+// Legacy Sidebar — replaced by OverdriveSidebar in the OverDrive design system.
 // Re-exported here so any stale imports keep working.
-export { ArmourySidebar as Sidebar } from '../armoury/ArmourySidebar';
+export { OverdriveSidebar as Sidebar } from '../overdrive/OverdriveSidebar';

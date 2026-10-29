@@ -1,5 +1,5 @@
-export { gpuService, controlService, monitoringService, profileService, alertService, remoteService, overlayService, appService } from './gpuService';
-export type { GPUInfo, GPUData, ExportedSample, AggregatedMetrics, MetricStats, GpuControlState, AlertRule, AlertEvent, OverlayConfig, OverlayMetric } from './gpuService';
+export { gpuService, controlService, fanCurveService, monitoringService, profileService, alertService, remoteService, overlayService, appService } from './gpuService';
+export type { GPUInfo, GPUData, ExportedSample, AggregatedMetrics, MetricStats, GpuControlState, GpuControlCapabilities, FanCurvePoint, FanCurveView, AlertRule, AlertEvent, OverlayConfig, OverlayMetric, SnapshotFanMode, ControlSnapshot, QuickSlotSummary } from './gpuService';
 export { automationService } from './automationService';
 export { backupService } from './backupService';
 export { marketplaceService } from './marketplaceService';

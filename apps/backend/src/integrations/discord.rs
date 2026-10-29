@@ -176,7 +176,7 @@ impl DiscordWebhook {
 
     pub async fn test_connection(webhook_url: &str) -> Result<String, String> {
         let embed = DiscordEmbed {
-            title: "GPUControl Pro — Connection Test".into(),
+            title: "OverDrive — Connection Test".into(),
             description: "Your Discord webhook is configured correctly.".into(),
             color: 0x2ecc71,
             fields: vec![DiscordField {
@@ -187,7 +187,7 @@ impl DiscordWebhook {
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
 
-        Self::send_message(webhook_url, "GPUControl Pro", "", "", &[embed]).await?;
+        Self::send_message(webhook_url, "OverDrive", "", "", &[embed]).await?;
         Ok("Discord webhook test successful".into())
     }
 }

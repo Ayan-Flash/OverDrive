@@ -41,7 +41,7 @@ impl AiStore {
     pub fn new() -> Self {
         let path = dirs_next::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("gpucontrol-pro")
+            .join("overdrive")
             .join("ai_state.json");
         let state = if path.exists() {
             match fs::read_to_string(&path) {

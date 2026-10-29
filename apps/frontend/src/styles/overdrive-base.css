@@ -1287,3 +1287,39 @@ body {
     transition: none;
   }
 }
+
+/* Compact instrument trace: history is populated only by received CPU samples. */
+.overview-cpu-activity {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  min-width: 0;
+  margin: 16px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--ac-border-subtle);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.overview-cpu-activity figcaption,
+.overview-cpu-activity__axis {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--ac-text-secondary);
+}
+.overview-cpu-activity figcaption > span:first-child {
+  color: var(--ac-text-primary);
+  font-weight: 600;
+}
+.overview-cpu-activity__status { display: inline-flex; align-items: center; gap: 5px; }
+.overview-cpu-activity__status i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.overview-cpu-activity__status.is-live { color: var(--ac-accent-teal); }
+.overview-cpu-activity__plot { position: relative; margin: 8px 0 5px; height: 62px; }
+.overview-cpu-activity__plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.overview-cpu-activity__grid { fill: none; stroke: var(--ac-border-subtle); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.overview-cpu-activity__line { fill: none; stroke: var(--ac-accent-teal); stroke-width: 1.6; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.overview-cpu-activity__point { fill: var(--ac-accent-teal); }
+.overview-cpu-activity__empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ac-text-secondary); font-size: 11px; padding: 0 12px; }
+.overview-cpu-sensor-note { grid-column: 1 / -1; grid-row: 5; color: var(--ac-text-secondary); font-size: 11px; line-height: 1.5; margin: 10px 0 0; }
+.overview-cpu-core-temperatures { grid-column: 1 / -1; grid-row: 6; min-width: 0; }

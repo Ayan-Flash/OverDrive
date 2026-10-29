@@ -53,3 +53,9 @@ pub fn set_voltage_offset(
     info!(gpu_id, offset_mv, "Setting voltage offset");
     Ok(state.monitoring.set_voltage_offset(&gpu_id, offset_mv)?)
 }
+
+#[tauri::command]
+pub fn set_fan_control_automatic(state: State<'_, SharedState>, gpu_id: String) -> AppResult<()> {
+    info!(gpu_id, "Returning fan control to the driver's automatic policy");
+    Ok(state.monitoring.set_fan_control_automatic(&gpu_id)?)
+}

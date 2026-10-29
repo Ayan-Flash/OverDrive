@@ -1,11 +1,11 @@
 [package]
-name = "gpucontrol-pro-backend"
+name = "overdrive-backend"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [lib]
-name = "gpucontrol_pro_lib"
+name = "overdrive_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

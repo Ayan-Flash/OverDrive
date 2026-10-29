@@ -12,7 +12,7 @@ static LOG_DIR: OnceLock<PathBuf> = OnceLock::new();
 fn default_log_dir() -> PathBuf {
     dirs_next::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("gpucontrol-pro")
+        .join("overdrive")
         .join("logs")
 }
 
@@ -28,7 +28,7 @@ pub fn init_logging() -> Option<WorkerGuard> {
     let _ = LOG_DIR.set(data_dir.clone());
     fs::create_dir_all(&data_dir).ok()?;
 
-    let file_appender = tracing_appender::rolling::daily(&data_dir, "gpucontrol.log");
+    let file_appender = tracing_appender::rolling::daily(&data_dir, "overdrive.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
     let env_filter = EnvFilter::try_from_default_env()

@@ -1,3 +1,3 @@
-// Legacy Header — replaced by ArmouryHeader in the Overdrive design system.
+// Legacy Header — replaced by OverdriveHeader in the OverDrive design system.
 // Re-exported here so any stale imports keep working.
-export { ArmouryHeader as Header } from '../armoury/ArmouryHeader';
+export { OverdriveHeader as Header } from '../overdrive/OverdriveHeader';

@@ -1,15 +1,15 @@
-import { TitleBar } from '../armoury/TitleBar';
-import { ArmourySidebar } from '../armoury/ArmourySidebar';
-import { ArmouryHeader } from '../armoury/ArmouryHeader';
+import { TitleBar } from '../overdrive/TitleBar';
+import { OverdriveSidebar } from '../overdrive/OverdriveSidebar';
+import { OverdriveHeader } from '../overdrive/OverdriveHeader';
 
 /* ================================================================
    MainLayout — Overdrive shell.
 
    Structure (top→bottom):
      TitleBar        (custom frameless, 32px)
-     ┣ ArmourySidebar (48px icon rail, left)
+     ┣ OverdriveSidebar (48px icon rail, left)
      ┗ Main area
-       ┣ ArmouryHeader (Dashboard title + system specs)
+       ┣ OverdriveHeader (Dashboard title + system specs)
        ┗ Page content  (flex-1, scrolls if needed)
    ================================================================ */
 
@@ -32,10 +32,10 @@ export function MainLayout({ children }: MainLayoutProps) {
       <TitleBar />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <ArmourySidebar />
+        <OverdriveSidebar />
 
         <div className="ac-main">
-          <ArmouryHeader />
+          <OverdriveHeader />
           {children}
         </div>
       </div>

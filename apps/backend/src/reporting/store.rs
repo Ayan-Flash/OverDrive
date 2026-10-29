@@ -19,7 +19,7 @@ impl ReportStore {
     pub fn new() -> Self {
         let path = dirs_next::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("gpucontrol-pro")
+            .join("overdrive")
             .join("reports");
         if !path.exists() {
             let _ = fs::create_dir_all(&path);

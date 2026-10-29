@@ -23,7 +23,7 @@ const pageTitles: Record<PageId, string> = {
   settings: 'Settings',
 };
 
-export function ArmouryHeader() {
+export function OverdriveHeader() {
   const currentPage = useUiStore((state) => state.currentPage);
   const selectedGpuId = useUiStore((state) => state.selectedGpuId);
   const gpus = useGpuStore((state) => state.gpus);
@@ -47,7 +47,7 @@ export function ArmouryHeader() {
   return (
     <header className="ac-header">
       <div className="ac-header__heading">
-        <span className="ac-header__eyebrow">GPU CONTROL PRO</span>
+        <span className="ac-header__eyebrow">OVERDRIVE</span>
         <h1 className="ac-header__title">{title}</h1>
       </div>
       <div className="ac-header__specs" aria-label="Detected hardware">

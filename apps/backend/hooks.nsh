@@ -1,46 +1,36 @@
-!macro NSIS_HOOK_PREINSTALL
-  DetailPrint "Pre-install: checking for running instances..."
-  nsExec::ExecToStack 'tasklist /FI "IMAGENAME eq gpucontrol-pro-backend.exe" /NH'
-  Pop $0
-  ${If} $0 == 0
-    DetailPrint "GPUControl Pro is running - attempting graceful shutdown..."
-    nsExec::ExecToStack 'taskkill /IM "gpucontrol-pro-backend.exe" /F'
-    Pop $0
-    Sleep 1000
-  ${EndIf}
+!define OVERDRIVE_BACKEND_SOURCE "${__FILEDIR__}"
+!include "x64.nsh"
 
-  ; Store previous version for rollback
-  ReadRegStr $R5 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\GPUControl Pro" "DisplayVersion"
-  ${If} $R5 != ""
-    WriteRegStr HKCU "Software\gpucontrol\GPUControl Pro" "PreviousVersion" $R5
+!macro RunSensorSetup MODE
+  InitPluginsDir
+  File /oname=$PLUGINSDIR\manage-sensor-service.ps1 "${OVERDRIVE_BACKEND_SOURCE}\tools\manage-sensor-service.ps1"
+  ; Installation is already elevated. No RunAs is used for the service or driver.
+  ${DisableX64FSRedirection}
+  nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\manage-sensor-service.ps1" -Mode ${MODE}'
+  ${EnableX64FSRedirection}
+  Pop $0
+  Pop $1
+  ${If} $0 != 0
+    DetailPrint "$1"
+    MessageBox MB_OK|MB_ICONSTOP "OverDrive sensor setup failed. $1"
+    Abort
   ${EndIf}
+!macroend
+
+!macro NSIS_HOOK_PREINSTALL
+  !insertmacro RunSensorSetup Stop
 !macroend
 
 !macro NSIS_HOOK_POSTINSTALL
-  CreateShortcut "$DESKTOP\GPUControl Pro.lnk" "$INSTDIR\gpucontrol-pro-backend.exe"
-
-  ; Set up auto-start on login for update checks
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "GPUControl Pro" "$\"$INSTDIR\gpucontrol-pro-backend.exe$\" --minimized"
-
-  ; Write install timestamp for update tracking
-  StrCpy $0 "INSTALL_TIMESTAMP"
-  WriteRegStr HKCU "Software\gpucontrol\GPUControl Pro" "InstallTimestamp" "$0"
-
-  ; If this was an update (/UPDATE flag), auto-restart the app
-  ${If} $UpdateMode = 1
-    DetailPrint "Update complete - restarting application..."
-    Exec '"$INSTDIR\gpucontrol-pro-backend.exe"'
-  ${EndIf}
+  ; Fixed administrator-controlled location, independent of the selected UI path.
+  SetOutPath "$PROGRAMFILES64\OverDrive Sensors"
+  File /r /x LibreHardwareMonitor.exe /x LibreHardwareMonitor.exe.config "${OVERDRIVE_BACKEND_SOURCE}\resources\LibreHardwareMonitor\*"
+  File "${OVERDRIVE_BACKEND_SOURCE}\resources\PawnIO\PawnIO_setup.exe"
+  !insertmacro RunSensorSetup Install
+  SetOutPath "$INSTDIR"
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
-  DetailPrint "Pre-uninstall: stopping application..."
-  nsExec::ExecToStack 'taskkill /IM "gpucontrol-pro-backend.exe" /F'
-  Pop $0
-  Sleep 500
-!macroend
-
-!macro NSIS_HOOK_POSTUNINSTALL
-  Delete "$DESKTOP\GPUControl Pro.lnk"
-  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "GPUControl Pro"
+  !insertmacro RunSensorSetup Remove
+  RMDir /r "$PROGRAMFILES64\OverDrive Sensors"
 !macroend

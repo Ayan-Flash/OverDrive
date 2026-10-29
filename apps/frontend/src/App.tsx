@@ -58,7 +58,7 @@ function SplashScreen() {
         <path d="M32 15L45 22.5V37.5L32 45L19 37.5V22.5L32 15Z" fill="#1e1e2c" stroke="#4a4a5e" strokeWidth="1.5" />
         <path d="M32 23L39 27V35L32 39L25 35V27L32 23Z" fill="none" stroke="#7aa8c8" strokeWidth="1.2" />
       </svg>
-      <span style={{ fontSize: 13, letterSpacing: '0.5px' }}>GPUControl Pro</span>
+      <span style={{ fontSize: 13, letterSpacing: '0.5px' }}>OverDrive</span>
     </div>
   );
 }
